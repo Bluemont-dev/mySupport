@@ -1,0 +1,44 @@
+#thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+
+}
+
+.thumbnailDiv img {
+    max-height: 75px;
+    border-radius: 50%;
+}
+
+#articleMetaStuff div {
+    margin: 10px;
+}
+
+
+#articleWrapper {
+    padding: 7px;
+}
+
+#ogImage img {
+    max-width: 100%;
+}
+
+.commentItemRow div:not(.commentItemTextDiv) {
+    margin: 10px;
+}
+
+#thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+
+}
+
+.thumbnailDiv img {
+    max-height: 50px;
+    border-radius: 50%;
+}
+
+#commentTextEntryDiv, .commentItemTextDiv {
+    background-color: #efefef;
+    border-radius: 10px;
+    padding: 5px;
+}

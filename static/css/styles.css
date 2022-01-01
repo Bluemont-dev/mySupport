@@ -1,0 +1,37 @@
+html, body {
+    margin: 0;
+    height: 100vh;
+}
+
+.btn-primary, .btn-primary:active, .btn-primary:visited {
+    background-color: #527bdc !important;
+}
+
+.btn-primary:hover {
+    background-color: #0c499c !important;
+}
+
+.do-not-center
+{
+    /* override Bootstrap's centering so bullet lists behave as expected */
+    text-align: left;
+    width: 30%;
+    margin: auto auto;
+}
+
+main .form-control
+{
+    /* Center form controls */
+    display: inline-block;
+
+    /* Override Bootstrap's 100% width for form controls */
+    width: auto;
+}
+
+.even {
+    background-color: #dddddd;
+}
+
+.odd {
+    background-color: #ffffff;
+}

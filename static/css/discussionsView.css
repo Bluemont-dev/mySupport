@@ -1,0 +1,25 @@
+.thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+}
+
+.thumbnailDiv img {
+    max-height: 50px;
+    border-radius: 50%;
+}
+
+.discussionMetaStuff div {
+    margin: 10px;
+}
+
+.discussionWrapper {
+    padding: 7px;
+}
+
+.discussionWrapper img{
+    margin-bottom: 10px;
+}
+
+
+
+

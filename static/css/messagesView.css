@@ -1,0 +1,24 @@
+#thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+
+}
+
+.thumbnailDiv img {
+    max-height: 75px;
+    border-radius: 50%;
+}
+
+#messageThread {
+    line-height: normal;
+    max-height: 50vh;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+#messageText {
+    line-height: normal;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+

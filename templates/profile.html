@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/profile2.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+Your Profile
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="col-lg-9 mx-auto mb-5">
+        <h2>How should people know you?</h2>
+
+        {% include 'profileInner2.html' %}
+
+        <div class="d-flex justify-content-center mt-4">
+            <a href="#top" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-up"></i>&nbsp;Back to top</a>
+            <a href="#" id="profile2SubmitButton" class="btn btn-large btn-success mx-3">Save this section</a>
+        </div>
+    </div>
+
+    <div class="col-lg-9 mx-auto">
+        <h2>Tell us about your challenges</h2>
+
+        {% include 'profileInner3.html' %}
+
+        <div class="d-flex justify-content-center mt-4">
+            <a href="#top" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-up"></i>&nbsp;Back to top</a>
+        </div>
+    </div>
+
+    <div class="col-lg-9 mx-auto mt-4">
+        <h2>Where are you?</h2>
+
+        {% include 'profileInner4.html' %}
+
+        <div class="d-flex justify-content-center mt-4">
+            <a href="#top" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-up"></i>&nbsp;Back to top</a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+
+{% block localJS %}
+<script src="/static/js/profile2.js"></script>
+<script src="/static/js/profile3.js"></script>
+<script src="/static/js/profile4.js"></script>
+{% endblock %}

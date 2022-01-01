@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/messagesView.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    Your Messages
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="col-lg-9 mx-auto mb-5">
+        <h1>Your Messages</h1>
+    </div>
+    <div class="d-flex justify-content-center my-5">
+        <a href="/messages/thread" class="btn btn-large btn-success mx-3"><i class="fas fa-pen"></i>&nbsp;Send a message</a>
+    </div>
+    <!--begin messageThread-->
+    <div id="messageThread" class="mb-4">
+        {% if superMessageList|length > 0 %}
+            {% for row in superMessageList %}
+            <div class="row mb-1 p-1 {{ loop.cycle('odd', 'even') }}">
+                <div class = "col-lg-1">
+                    {% if row['unreadCount'] > 0 %}
+                        <span class="badge rounded-pill bg-danger">{{ row['unreadCount']}}</span>
+                    {% endif %}
+                </div>
+                <div  class="thumbnailDiv col-lg-1">
+                    <img class = "thumbnailImage" alt={{ row['displayName'] }} src={{ "/static/avatars/" + row['profileImage'] }}>
+                </div>
+                <div class="col-lg-5">
+                    <p><strong>{{ row['displayName'] }}</strong></p>
+                    <p>
+                        {% if row['text']|length < 200 %}
+                            {{ row['text'] }}
+                        {% else %}
+                            {{ row['text'][0:200] + "..." }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-lg-2">
+                    {% if row['allDisplayNames']|length > 0 %}
+                    <p><small>+ {{ row['allDisplayNames'] }}</small></p>
+                    {% endif %}
+                </div>
+                <div class = "col-lg-3">
+                    <p>{{ row['dateTimeString'] }}</p>
+                    <a href={{'/messages/thread/' + row['allRecipientsInts'] }} type="button" class="btn btn-sm btn-outline-primary">Read more / Reply</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+    <!--end messageThread-->
+</div>
+{% endblock %}

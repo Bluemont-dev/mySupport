@@ -1,0 +1,11 @@
+.thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+
+}
+
+.thumbnailDiv img {
+    max-height: 50px;
+    border-radius: 50%;
+}
+

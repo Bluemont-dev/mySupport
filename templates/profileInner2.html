@@ -1,0 +1,83 @@
+    <form action="/profile2" method="POST" id="profileForm2" name="profileForm2" enctype="multipart/form-data">
+        <input id="formSource2" name="formSource2" type="hidden" value={{ formSource }}>
+        <div class="row">
+            <div class="col-md-6">
+                <!--<h5>Your name</h5>-->
+                <label for="username">Username</label>
+                <div class="mb-3">
+                  <input type="text" class="form-control" id="username" name="username" value="{{ userRows[0]["username"] }}" required>
+                </div>
+                <label for="firstNameInput">First name <em>(optional)</em></label>
+                <div class="mb-3">
+                    {% if not userRows[0]["firstName"] %}
+                    <input type="text" class="form-control" id="firstNameInput" name="firstName">
+                    {% else %}
+                    <input type="text" class="form-control" id="firstNameInput" name="firstName" value={{ userRows[0]["firstName"] }}>
+                    {% endif %}
+                </div>
+                <label for="lastNameInput">Last name or initial <em>(optional)</em></label>
+                <div class="mb-3">
+                    {% if not userRows[0]["lastName"] %}
+                    <input type="text" class="form-control" id="lastNameInput" name="lastName">
+                    {% else %}
+                    <input type="text" class="form-control" id="lastNameInput" name="lastName" value={{ userRows[0]["lastName"] }}>
+                    {% endif %}
+                </div>
+
+                <h5>Which name do you prefer to show others?</h5>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="displayNameOption" id="displayNameOptionUsername"
+                    {% if userRows[0]["displayNameOption"]==1 %} checked{% endif %}>
+                    <label class="form-check-label" for="displayNameOptionUsername">
+                    my username
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="displayNameOption" id="displayNameOptionFirstLast"
+                    {% if userRows[0]["displayNameOption"]==2 %} checked{% endif %}
+                    {% if userRows[0]["firstName"]==None and userRows[0]["lastName"]==None %} disabled{% endif %}>
+                    <label class="form-check-label" for="displayNameOptionFirstLast">
+                    my first & last name
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h5>How do you want to appear?</h5>
+                <div id="thumbnailDiv" class="d-flex justify-content-center">
+                    <figure id = "thumbnailFigure">
+                        <img id = "thumbnailImage" alt="your profile image" src={{ "/static/avatars/" + userRows[0]['profileImage'] }}>
+                        <figcaption id = "thumbnailFigcaption">{{ userDict["displayName"] }}</figcaption>
+                    </figure>
+                </div>
+                <!--begin the accordion for changing profile image-->
+                <div class="accordion" id="avatarAccordion">
+                  <div class="accordion-item">
+                    <h2 class="accordion-header" id="avatarSelectCollapseHeading">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#avatarSelectCollapse" aria-expanded="true" aria-controls="avatarSelectCollapse">
+                        Change your profile image
+                      </button>
+                    </h2>
+                    <div id="avatarSelectCollapse" class="accordion-collapse collapse" aria-labelledby="avatarSelectCollapseHeading" data-bs-parent="#avatarAccordion">
+                      <div class="accordion-body">
+                        <div id="fileSelectDiv" class="d-flex justify-content-center align-items-center bg-primary text-white p-2">
+                            <label for="fileElem">Upload a new image</label>
+                            <input type="file" id="fileElem" name="file" accept="image/*">
+                        </div>
+                        <div>
+                            <p><em>Use jpg, png or gif format. Max. file size: 1 MB.</em></p>
+                        </div>
+                        <div id="useOrCancel" class="d-none justify-content-center my-3">
+                            <a href="#" id="fileSelectUse" class="btn btn-sm btn-success mx-3">Use this image</a>
+                            <a href="#" id="fileSelectCancel" class="btn btn-sm btn-secondary mx-3">Cancel</a>
+        	            </div>
+        	            <div id ="thumbnailSaveStatus">
+        	                <p><em>Got it! We'll save this image to your profile when you save this page.</em></p>
+        	            </div>
+                      </div>
+                    </div>
+                  </div>
+                 </div>
+                <!--end the accordion for changing profile image-->
+            </div>
+        </div>
+    </form>

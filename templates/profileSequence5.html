@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Profile Step 5 of 5
+{% endblock %}
+
+{% block main %}
+
+<div class="px-4 py-5 my-5">
+    <div class="col-lg-6 mx-auto">
+        <h1>Thanks &#8212 now join the conversation!</h1>
+        <div class="progress my-3">
+          <div class="progress-bar progress-bar-striped bg-success" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <p>
+            Thanks for setting up your profile. If you ever want to change it, visit the <strong>{{ userDict["displayName"] }}</strong> menu at the top right of any page. There you can:
+            <ul>
+                <li>update your <a href="/profile">Profile</a>, or</li>
+                <li>adjust your <a href="/settings">Settings</a> for things like topics you want to follow, or to manage who can send you messages.</li>
+            </ul>
+        </p>
+        <p>
+            Now you might want to:
+            <ul>
+                <li>Find other <a href="/people">people</a> who share your challenges.</li>
+                <li>Send <a href="messages">messages</a> to people</li>
+                <li>Start or join <a href="/discussions">discussions</a></li>
+                <li>Share a link to a helpful <a href="/articles">articles</a> or books</li>
+
+            </ul>
+            These are available in the menus of this site. Or you can save all that stuff for later, and just go to the Home page!
+        </p>
+        <div id="profile5Nav" class="d-flex justify-content-center mt-4">
+            <a href="/profile4" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-left"></i></a>
+            <a href="/" class="btn btn-large btn-success mx-3">Home page</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

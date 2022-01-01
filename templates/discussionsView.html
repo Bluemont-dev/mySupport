@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/discussionsView.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    Discussions
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="col-lg-9 mx-auto mb-5">
+        <h1>Discussions</h1>
+    </div>
+    <div class="d-flex justify-content-center my-5">
+        <a href="/discussion/thread" class="btn btn-large btn-success mx-3"><i class="fas fa-pen"></i>&nbsp;Start a discussion</a>
+    </div>
+    <div id="discussionsRows" class="mb-4">
+    <!--begin discussionsRows-->
+    {% if allDiscussionsList|length > 0 %}
+        {% for discussionRow in allDiscussionsList %}
+        <div class="d-flex justify-content-center row">
+            <div class = "d-flex justify-content-start discussionMetaStuff col-lg-1 thumbnailDiv">
+                <img class = "thumbnailImage" alt={{ discussionRow['displayName'] }} src={{ "/static/avatars/" + discussionRow['profileImage'] }}>
+            </div>
+            <div class="col-lg-3">
+                <strong><a href="{{ "/person/" + discussionRow['username'] }}">{{ discussionRow['displayName'] }}</strong></a><br>
+                {{ discussionRow['dateTimeString'] }}
+            </div>
+            <div class="col-lg-1">
+                {% if discussionRow['commentCount'] > 0 %}
+                    <i class="fs-5 fas fa-comments"></i>
+                    <span class="badge rounded-pill bg-danger">{{ discussionRow['commentCount']}}</span>
+                {% endif %}
+            </div>
+            <div class="col-lg-5">
+                {% if discussionRow['ageIDs'] or discussionRow['challengeIDs'] or discussionRow['genderIDs'] %}
+                    <p>
+                    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target='{{ "#aimedAtCollapse" + discussionRow['id']|string }}' aria-expanded="false" aria-controls='{{ "#aimedAtCollapse" + discussionRow['id']|string }}'>
+                        aimed at:&nbsp;&nbsp;<i class="fas fa-caret-down"></i>
+                    </button>
+                    </p>
+                    <div class="collapse" id='{{ "aimedAtCollapse" + discussionRow['id']|string }}'>
+                        <div class="card card-body">
+                        {% if discussionRow['challenges'] %}
+                            living with:
+                            <ul>
+                                {% for challenge in discussionRow['challenges'].split(',') %}
+                                    <li>{{ challenge }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        {% if discussionRow['ages'] %}
+                            age is:
+                            <ul>
+                                {% for age in discussionRow['ages'].split(',') %}
+                                    <li>{{ age }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        {% if discussionRow['genders'] %}
+                            gender is:
+                            <ul>
+                                {% for  gender in discussionRow['genders'].split(',') %}
+                                    <li>{{ gender }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        </div>
+                    </div>
+
+
+
+
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-flex justify-content-center row">
+            <div class="my-4 col-lg-9">
+                <h3>{{ discussionRow['subject'] }}</h3>
+            </div>
+        </div>
+        <div class="d-flex justify-content-center row">
+            <div class = "discussionWrapper col-lg-9">
+                <p>
+                {% if discussionRow['textContent']|length > 99 %}
+                    {{ discussionRow['textContent'][:97] + "..." }}
+                {% else %}
+                    {{ discussionRow['textContent'] }}
+                {% endif %}
+                </p>
+                {% if discussionRow['imageTagCode'] %}
+                    {{ discussionRow['imageTagCode']|safe }}
+                {% endif %}
+                <p>
+                <a href={{'/discussion/' + discussionRow['id']|string }} type="button" class="btn btn-sm btn-primary">Read more / Comment</a>
+                </p>
+            </div>
+        </div>
+        <hr>
+        {% endfor %}
+    {% endif %}
+    <!--end discussionsRows-->
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+.thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+}
+
+.thumbnailDiv img {
+    max-height: 50px;
+    border-radius: 50%;
+}
+
+.articleMetaStuff div {
+    margin: 10px;
+}
+
+.articleWrapper {
+    padding: 7px;
+}
+
+.discussionMetaStuff div {
+    margin: 10px;
+}
+
+.discussionWrapper {
+    padding: 7px;
+}
+
+.discussionWrapper img{
+    margin-bottom: 10px;
+}
+
+.ogImages img{
+    max-width: 100%;
+}
+
+#column1 {
+    margin-right: 5px;
+    border-radius: 5px;
+    background-color: #527bdc;
+    padding: 7px;
+}
+
+.singleDiscussionItem {
+    border-radius: 5px;
+    background-color: #ffffff;
+    opacity: 1.0;
+    padding: 7px;
+}
+
+#column1 .btn {
+    background-color: #ffffff;
+}
+
+#column1 .btn:hover {
+    color: #111111;
+}
+
+#column1 h4 {
+    color: #ffffff;
+}
+
+#column2 {
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.singleArticleItem {
+    border-radius: 5px;
+    border: 1px solid #527bdc;
+    padding: 7px;
+}
+
+#column3 {
+    margin-left: 5px;
+}
+
+#houseAds img{
+    max-width: 100%;
+    box-shadow: 3px 3px 3px #cccccc;
+}
+
+
+
+

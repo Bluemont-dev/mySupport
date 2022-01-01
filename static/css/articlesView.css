@@ -1,0 +1,26 @@
+.thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+}
+
+.thumbnailDiv img {
+    max-height: 50px;
+    border-radius: 50%;
+}
+
+.articleMetaStuff div {
+    margin: 10px;
+}
+
+.articleWrapper {
+    padding: 7px;
+}
+
+.titleAndImageWrapper img{
+    max-width: 100%;
+    margin-bottom: 10px;
+}
+
+
+
+

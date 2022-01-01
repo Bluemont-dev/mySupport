@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+{% endblock %}
+
+{% block title %}
+Profile Step 4 of 5
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="col-lg-9 mx-auto">
+        <h1>Where are you?</h1>
+        <div class="progress my-3">
+          <div class="progress-bar progress-bar-striped bg-success" role="progressbar" style="width: 80%" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+{% include 'profileInner4.html' %}
+
+        <div id = "profile4Nav" class="d-flex justify-content-center mt-4">
+            <a href="/profile3" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-left"></i></a>
+            <a href="/profile5" class="btn btn-large btn-success mx-3">Continue</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+{% block localJS %}<script src="/static/js/profile4.js"></script>{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/index.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+Home
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="mx-auto mb-5">
+        <h1>MySupport Home</h1>
+    </div>
+    <div class="row">
+        <!--begin column 1 of 3-->
+        <div class="col-lg-4" id="column1">
+            <h4>Recent discussions:</h4>
+            {% if allDiscussionsList|length > 0 %}
+                {% for discussionRow in allDiscussionsList %}
+                <div class="singleDiscussionItem my-4">
+                    <strong><a href={{ '/discussion/' + discussionRow['id']|string  }}>{{ discussionRow['subject'] }}</a></strong><br>
+                    <div class="d-flex justify-content-center row">
+                        <div class = "d-flex justify-content-start discussionMetaStuff col-lg-2 thumbnailDiv">
+                            <img class = "thumbnailImage" alt="{{ discussionRow['displayName'] }}" src={{ "/static/avatars/" + discussionRow['profileImage'] }}>
+                        </div>
+                        <div class="col">
+                            {{ discussionRow['displayName'] }}<br>
+                            <small>{{ discussionRow['dateTimeString'] }}</small>
+                        </div>
+                        {% if discussionRow['commentCount'] > 0 %}
+                        <div class="col-lg-3">
+                                <i class="fs-5 fas fa-comments"></i>&nbsp;<span class="badge rounded-pill bg-danger">{{ discussionRow['commentCount']}}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="my-4">
+                <em>No discussions available to read.</em>
+                </div>
+            {% endif %}
+            <div class="d-flex justify-content-center my-3">
+                <a href="/discussions" class="btn btn-sm btn-outline-success mx-3"><i class="fas fa-caret-square-left"></i>&nbsp;See all discussions</a>
+                <a href="/discussion/thread" class="btn btn-sm btn-outline-success mx-3"><i class="fas fa-pen"></i>&nbsp;Start a discussion</a>
+            </div>
+        </div>
+        <!--end column 1 of 3-->
+
+        <!--begin column 2 of 3-->
+        <div class="col-lg-4" id="column2">
+            <h4>Recent articles:</h4>
+            {% if allArticlesList|length > 0 %}
+                {% for articleRow in allArticlesList %}
+                <div class="singleArticleItem my-4">
+                    <div class="row">
+                        {% if articleRow['ogImage'] %}
+                        <div class="col-lg-3 col-sm-6 ogImages">
+                            <img src='{{ articleRow['ogImage'] }}'>
+                        </div>
+                        {% endif %}
+                        <div class="col">
+                            <strong><a href={{ '/article/' + articleRow['id']|string  }}>{{ articleRow['title'] }}</a></strong>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-center row">
+                        <div class = "d-flex justify-content-start articleMetaStuff col-lg-2 thumbnailDiv">
+                            <img class = "thumbnailImage" alt="{{ articleRow['displayName'] }}" src={{ "/static/avatars/" + articleRow['profileImage'] }}>
+                        </div>
+                        <div class="col">
+                            <em>{{ articleRow['website'] }}</em><br>
+                            shared by: {{ articleRow['displayName'] }}<br>
+                            <small>{{ articleRow['dateTimeString'] }}</small>
+                        </div>
+                        {% if articleRow['commentCount'] > 0 %}
+                        <div class="col-lg-3">
+                                <i class="fs-5 fas fa-comments"></i>&nbsp;<span class="badge rounded-pill bg-danger">{{ articleRow['commentCount']}}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="my-4">
+                <em>No articles available to read.</em>
+                </div>
+            {% endif %}
+            <div class="d-flex justify-content-center my-3">
+                <a href="/articles" class="btn btn-sm btn-success mx-3"><i class="fas fa-caret-square-left"></i>&nbsp;See all articles</a>
+                <a href="/article/thread" class="btn btn-sm btn-success mx-3"><i class="fas fa-pen"></i>&nbsp;Share an article</a>
+            </div>
+        </div>
+        <!--end column 2 of 3-->
+        <!--begin column 3 of 3-->
+        <div class="col"  id="column3">
+            <div id="houseAds" class="mb-4">
+                <div>
+                    <img src="/static/images/infographic_sample.png">
+                </div>
+            </div>
+            <h4>New people in the community:</h4>
+            {% if peopleRows|length > 0 %}
+                {% for row in peopleRows %}
+                <div class="row mb-3 p-2 {{ loop.cycle('odd', 'even') }}">
+                    <div  class="thumbnailDiv col-md-auto mx-auto d-flex justify-content-left">
+                        <figure class = "thumbnailFigure">
+                            <img class = "thumbnailImage" alt={{ row['displayName'] }} src={{ "/static/avatars/" + row['profileImage'] }}>
+                            <!--<figcaption class = "thumbnailFigcaption">{{ row["displayName"] }}</figcaption>-->
+                        </figure>
+                    </div>
+                    <div class="col">
+                        <strong><a href={{ '/person/' + row['username'].replace(' ','%20') }}>
+                            {% if row['firstName'] %}
+                                {{row['firstName']}}
+                            {% endif %}
+                            {% if row['firstName'] and row['lastName'] %}
+
+                            {% endif %}
+                            {% if row['lastName'] %}
+                                {{row['lastName']}}
+                            {% endif %}
+                            {% if (row['firstName'] or row['lastName']) %}
+                                /
+                            {% endif %}
+                             {{ row['username'] }}
+                        </a></strong>
+                        {% if row['city'] or row['county'] or row['state'] %}
+                            <br>
+                            {% if row['city'] %}{{ row['city'] }}{% endif %}
+
+                            {% if row['city'] and (row['county'] or row['state']) %} / {% endif %}
+
+                            {% if row['county'] %}{{ row['county'] }} county{% endif %}
+
+                            {% if row['state'] %} / {% endif %}
+
+                            {% if row['state'] %}{{ row['state'] }}{% endif %}
+                            <br>
+                        {% endif %}
+                        <p>
+                            <em>joined {{ row['joinedDateString'] }}</em>
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+            <div class="d-flex justify-content-center my-3">
+                <a href="/people" class="btn btn-sm btn-success mx-3">See more people</a>
+            </div>
+        </div>
+        <!--end column 3 of 3-->
+    </div>
+</div>
+{% endblock %}

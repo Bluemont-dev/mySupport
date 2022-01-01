@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/register.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    Sign In
+{% endblock %}
+
+{% block main %}
+<div class="align-items-center" height=100%>
+    <main class="form-signin">
+      <form action="/signin" method="post">
+        <h1 class="h3 mb-4 fw-normal">Please sign in</h1>
+        <input type="hidden" name = "next" value="{{ request.args.get('next', '') }}"/>
+        <label for="emailInput">Email address</label>
+        <p class="text-muted">Example: yourname@company.com</p>
+        <div class="input-group mb-3">
+          <input type="email" class="form-control" id="emailInput" name="email" required>
+        </div>
+        <label for="emailInput">Password</label>
+        <div class="input-group mb-3 d-flex align-items-center">
+          <input type="password" class="form-control" id="passwordInput" name="password" required>
+          <i class="fas fa-eye-slash" style="margin-left: -30px; cursor: pointer; z-index:5;" id="togglePassword" title="show/hide password"></i>
+        </div>
+
+        <!--<div class="checkbox mb-3">-->
+        <!--  <label>-->
+        <!--    <input type="checkbox" value="remember-me"> Remember me-->
+        <!--  </label>-->
+        <!--</div>-->
+        <button class="w-100 btn btn-lg btn-primary mb-3" type="submit">Sign in</button>
+      </form>
+      <p style="text-align:center;"><a href="#">Forgot / Reset password</a></p>
+      <p style="text-align:center;">Not registered yet? <a href="/register">Do it now.</a></p>
+    </main>
+</div>
+
+{% endblock %}
+
+{% block localJS %}
+  <script src="/static/js/signin.js"></script>
+{% endblock %}

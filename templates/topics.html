@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Topics
+{% endblock %}
+
+{% block main %}
+<h1>Topics</h1>
+<div>
+    The topics now include:
+    {% for row in topics %}
+    <p>
+        {{ row.topic }}
+    </p>
+    {% endfor %}
+</div>
+<div>
+    <form action="/topics" method="post">
+        <input type="text" name="newTopic" autopopulate="off" placeholder="Enter a new topic">
+        <button type="submit">Submit</button>
+    </form>
+</div>
+{% endblock %}
+

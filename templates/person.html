@@ -1,0 +1,99 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/person.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    {{ personDisplayName }}
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="row">
+        <div id="thumbnailDiv" class="col-md-3 mx-auto d-flex justify-content-center">
+            <figure id = "thumbnailFigure">
+                <img id = "thumbnailImage" alt={{ personDisplayName }} src={{ "/static/avatars/" + personRows[0]['profileImage'] }}>
+            </figure>
+        </div>
+        <div class="col-md-9">
+            <h1>
+              {% if personRows[0]['firstName'] %}
+                  {{personRows[0]['firstName']}}
+              {% endif %}
+              {% if personRows[0]['firstName'] and personRows[0]['lastName'] %}
+
+              {% endif %}
+              {% if personRows[0]['lastName'] %}
+                  {{personRows[0]['lastName']}}
+              {% endif %}
+              {% if (personRows[0]['firstName'] or personRows[0]['lastName']) %}
+                  /
+              {% endif %}
+               {{ personRows[0]['username'] }}
+            </h1>
+
+
+
+            <p>
+                {% if personRows[0]['city'] %}{{ personRows[0]['city'] }}{% endif %}
+
+                {% if personRows[0]['city'] and (personRows[0]['county'] or personRows[0]['state']) %} / {% endif %}
+
+                {% if personRows[0]['county'] %}{{ personRows[0]['county'] }} county{% endif %}
+
+                {% if personRows[0]['state'] %} / {% endif %}
+
+                {% if personRows[0]['state'] %}{{ personRows[0]['state'] }}{% endif %}
+            </p>
+             {% if personRows[0]['messagesAllowFrom'] != 'none' and userDict['id'] != personRows[0]['id'] %}
+                <p>
+                    <a href={{ '/messages/thread/' + personRows[0]['id']|string }} id="personMessageButton" class="btn btn-sm btn-success mx-3">Send a message</a>
+                </p>
+                {% if personRows[0]['messagesAllowFrom'] != 'all' %}<em>Note: {{ personDisplayName }} is limiting the users who can send them messages.</em>{% endif %}
+             {% endif %}
+
+        </div>
+    </div>
+    {% if lovedOnes %}
+    <div class="mt-4">
+      <h5 class="mb-4">{{ personDisplayName }} is here to support their:</h5>
+      <div class="my-4" id="LovedOnesNarrativeDiv">
+        <ul class="list-group list-group-flush">
+        {% for row in lovedOnes %}
+          <li class="list-group-item">
+              <strong>
+                {% if row.relationship %}
+                  {{ row.relationship }}
+                {% else %}
+                  loved one
+                {% endif %}
+              </strong>
+              {% if row.challenge %}
+                , living with <strong>
+                  {% for i in range(row.challenge|length) %}
+                    {% if i > 0 %}, and {% endif %}
+                    {{ row.challenge[i] }}
+                  {% endfor %}
+                  </strong>
+              {% endif %}
+              .
+              {% if row.age %}
+                Age is <strong>{{ row.age }}</strong>.
+              {% endif %}
+              {% if row.gender %}
+                  Gender is <strong>{{ row.gender }}</strong>.</li>
+              {% endif %}
+          </li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+
+{% block localJS %}
+<!--<script src="/static/js/profile2.js"></script>-->
+{% endblock %}

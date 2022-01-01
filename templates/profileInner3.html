@@ -1,0 +1,97 @@
+   <form action="/profile3" method="POST" id="profileForm3" name="profileForm3">
+        <p>The strength of an online community is in finding people and information related to your interests and your challenges. So feel free to tell us more about the person(s) you're supporting. Or skip this section if you'd prefer not to share now.</p>
+        <input id="formSource3" name="formSource3" type="hidden" value={{ formSource }}>
+        <input id="editID" name="editID" type="hidden" value={{ editID }}>
+        <!--start of lower row-->
+        <div class="row">
+            <div class="col-md-8">
+              <h5 class="mb-4">I'm here to support my:</h5>
+              {% if lovedOnes %}
+              <div class="my-4" id="LovedOnesNarrativeDiv">
+                {% for row in lovedOnes %}
+                  <div class="d-flex bd-highlight align-items-center">
+                    <div class="p-2 flex-grow-1 bd-highlight">
+                      <strong>
+                        {% if row.relationship %}
+                          {{ row.relationship }}
+                        {% else %}
+                          loved one
+                        {% endif %}
+                      </strong>
+                      {% if row.challenge %}
+                        , living with <strong>
+                          {% for i in range(row.challenge|length) %}
+                            {% if i > 0 %}, and {% endif %}
+                            {{ row.challenge[i] }}
+                          {% endfor %}
+                          </strong>
+                      {% endif %}
+                      .
+                      {% if row.age %}
+                        Age is <strong>{{ row.age }}</strong>.
+                      {% endif %}
+                      {% if row.gender %}
+                          Gender is <strong>{{ row.gender }}</strong>.</li>
+                      {% endif %}
+                    </div>
+                    <div class="p-2 bd-highlight"><button id="{{ row.id }}" class="btn btn-secondary my-3 lovedOneNarrative lovedOneNarrativeEdit" type="button"><i class="fas fa-pencil-alt"></i></button></div>
+                    <div class="p-2 bd-highlight"><button id="{{ row.id }}" class="btn btn-danger my-3 lovedOneNarrative lovedOneNarrativeDelete" type="button"><i class="fas fa-trash-alt"></i></button></div>
+                  </div>
+                {% endfor %}
+                <div>
+                  <button id="lovedOneNarrativeAdd" type="button" class="btn btn-primary my-3 mx-3 lovedOneNarrative"><i class="fas fa-user-plus">&nbsp;Add a person</i></button>
+                  <button id="profile3CancelButton" type="button" class="btn btn-md btn-secondary my-3 mx-3 d-none">Cancel</button>
+                </div>
+              </div>
+              {% endif %}
+              <div id="lovedOnesEditDiv" {% if lovedOnes %}style='display:none;'{% endif %}>
+                <div class="mb-4">
+                  <label for="relationship" class="form-label">Person you're supporting:</label>
+                  <select class="form-select" id="relationship" name="relationship">
+                    <option value="">Choose...</option>
+                    {% for item in selects3Dict['relationships'] %}
+                    <option value="{{ item['id'] }}">{{ item['relationship'] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="mb-4">
+                  <label for="challenge" class="form-label">who is living with: <em>(choose all that apply)</em></label>
+                  <select class="form-select" id="challenge" name="challenge" multiple size="4">
+                    {% for item in selects3Dict['challenges'] %}
+                    <option value="{{ item['id'] }}">{{ item['challenge'] }}</option>
+                    {% endfor %}
+                  </select>
+                  <p><small class="text-muted">To select multiple items, Ctl-click on Windows or Cmd-click on Mac</small></p>
+                </div>
+                <div class="mb-4">
+                  <label for="age" class="form-label">Their age is:</label>
+                  <select class="form-select" id="age" name="age">
+                    <option value="">Choose...</option>
+                    {% for item in selects3Dict['ages'] %}
+                    <option value="{{ item['id'] }}">{{ item['age'] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="mb-4">
+                  <label for="gender" class="form-label">Their gender is:</label>
+                  <select class="form-select" id="gender" name="gender">
+                    <option value="">Choose...</option>
+                    {% for item in selects3Dict['genders'] %}
+                    <option value="{{ item['id'] }}">{{ item['gender'] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div id="profile3ActionsDiv" class="d-none">
+                  <button id="profile3SubmitButton" class="btn btn-md btn-primary mb-3 mx-3" type="submit">Save</button>
+                  <button id="profile3ResetButton" class="btn btn-md btn-secondary mb-3 mx-3" type="reset">Reset</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <img src="/static/support_loved_ones.jpg" class="img-fluid" alt="The arms of two people extend across a table, clasping each other's hands.">
+              <p><em>Photo by <a href="https://unsplash.com/@priscilladupreez?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Priscilla Du Preez</a> on <a href="https://unsplash.com/s/photos/support-caregiver?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a></em></p>
+            </div>
+        </div>
+        <!--end of lower row-->
+    </form>

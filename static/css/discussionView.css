@@ -1,0 +1,40 @@
+#thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+
+}
+
+.thumbnailDiv img {
+    max-height: 75px;
+    border-radius: 50%;
+}
+
+#discussionMetaStuff div {
+    margin: 10px;
+}
+
+
+#discussionWrapper {
+    padding: 7px;
+}
+
+.commentItemRow div:not(.commentItemTextDiv) {
+    margin: 10px;
+}
+
+#thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+
+}
+
+.thumbnailDiv img {
+    max-height: 50px;
+    border-radius: 50%;
+}
+
+#commentTextEntryDiv, .commentItemTextDiv {
+    background-color: #efefef;
+    border-radius: 10px;
+    padding: 5px;
+}

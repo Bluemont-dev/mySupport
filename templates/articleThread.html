@@ -1,0 +1,145 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/articleThread.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    {% if editMode == "create" %}
+        Share an article
+    {% else %}
+        Edit your article
+    {% endif %}
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="mx-auto mb-5">
+        <h1>
+        {% if editMode == "create" %}
+            Share an article
+        {% else %}
+            Edit your article
+        {% endif %}
+        </h1>
+        <div class="d-flex justify-content-center my-5">
+            <a href="/articles" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-left"></i>&nbsp;See all articles</a>
+        </div>
+        <form action="/article/getArticleDetails/" method="POST" id="articleURLForm" name="articleURLForm">
+            <div id = "urlContainer">
+                <label for="url" class="form-label">First, type or paste the URL (web address) of the article:</label><br>
+                <span class="d-flex align-items-middle">
+                {% if editMode == "edit" %}
+                    <input type="text" class="form-control" id="url" name="url" size="80" autocomplete="off" value='{{ articleRow['url'] }}'>
+                {% else %}
+                    <input type="text" class="form-control" id="url" name="url" size="80" autocomplete="off">
+                {% endif %}
+                <button class="btn btn-small btn-primary" id="urlGoButton" disabled>Go</button>
+                </span>
+            </div>
+        </form>
+        <form action="/article/thread/" method="POST" id="articleThreadForm" name="articleThreadForm">
+            <input type="hidden" name="editMode" id="editMode" value='{{ editMode }}'>
+            <input type="hidden" name="ogImagePath" id="ogImagePath" value='{{ articleRow['ogImage'] }}'>
+            <!--<input type="hidden" name="descriptionText" id="descriptionText" value="">-->
+            <input type="hidden" name="articleURL" id="articleURL" value="">
+            <input type="hidden" name="articleID" id="articleID" value='{{ articleRow['id'] }}'>
+            <div class="row d-none mt-4" id ="otherContainer">
+                <div class="col-lg-7">
+                    <!--first column of this row is for composition of article-->
+                    <div id="titleDiv">
+                        {% if editMode != "create" %}
+                        <div class="mt-4">
+                            <label for="title" class="form-label">Title: <small><em>required</em></small></label><br>
+                            <input type="text" class="form-control" size="50" autocomplete="off" id="title" name="title"
+                            {% if articleRow['title'] %}
+                            value='{{ articleRow['title'] }}'
+                            {% else %}
+                            value=""
+                            {% endif %}
+                             >
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mt-4" id="datePublishedDiv">
+                        <label for="datePublished" class="form-label">Date published: <small><em>required</em>&nbsp;(YYYY-MM-DD)</small></label><br>
+                        <input type="text" class="form-control" id="datePublished" name="datePublished"
+                        {% if articleRow['datePublished'] %}
+                        value='{{ articleRow['datePublished'] }}'
+                        {% else %}
+                        value=""
+                        {% endif %}
+                         >
+                    </div>
+                    <div class="mt-4" id="descriptionDiv">
+                        <label for="description" class="form-label">Your comments or description: <small><em>(optional)</em></small></label><br>
+                        {% if editMode == "edit" %}
+                            <textarea class="form-control" id="description" name="description" rows="5" cols="40">{% if articleRow['description'] %}{{ articleRow['description'] }}{% endif %}</textarea>
+                        {% else %}
+                            <textarea class="form-control" id="description" name="description" rows="5" cols="40"></textarea>
+                        {% endif %}
+                    </div>
+                    {% if articleRow['ogImage'] %}
+                    <div class="my-4 d-none" id="ogImageDiv">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="useOGImage" value="yes" id="useOGImage" onClick="checkbox_click(this.id)" checked>
+                          <label class="form-check-label" for="useOGImage">
+                            Use this image?
+                          </label>
+                        </div>
+                        <div>
+                            <img src='{{ articleRow['ogImage'] }}'>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-lg-5">
+                    <!--second column of this row is for tagging with challenges, ages, genders -->
+                    <div class="mb-4">
+                    <h5>This article is mostly aimed at people supporting someone:</h5>
+                      <label for="challenge" class="form-label">living with: <em>(choose all that apply)</em></label>
+                      <select class="form-select" id="challenge" name="challenge" multiple size="4">
+                        {% for item in selectsDict['challenges'] %}
+                        <option value="{{ item['id'] }}" {% if articleRow['challengeIDs'] and item['id']|string in articleRow['challengeIDs'] %}selected{% endif %}>
+                            {{ item['challenge'] }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="mb-4">
+                      <label for="age" class="form-label">whose age is:  <em>(choose all that apply)</em></label>
+                      <select class="form-select" id="age" name="age" multiple size="4">
+                        {% for item in selectsDict['ages'] %}
+                        <option value="{{ item['id'] }}" {% if articleRow['ageIDs'] and item['id']|string in articleRow['ageIDs'] %}selected{% endif %}>
+                            {{ item['age'] }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="mb-4">
+                      <label for="gender" class="form-label">whose gender is:  <em>(choose all that apply)</em></label>
+                      <select class="form-select" id="gender" name="gender" multiple size="4">
+                        {% for item in selectsDict['genders'] %}
+                        <option value="{{ item['id'] }}" {% if articleRow['genderIDs'] and item['id']|string in articleRow['genderIDs'] %}selected{% endif %}>
+                            {{ item['gender'] }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <p><small class="text-muted">To select multiple items, Ctl-click on Windows or Cmd-click on Mac</small></p>
+                </div>
+            </div>
+            <div class="d-none justify-content-center mt-3" id="textEntryActionButtons">
+                <button type="button" class="btn btn-secondary" id="articleTextCancelButton"><i class="fas fa-window-close"></i>&nbsp Cancel</button>
+                <button type="button" class="btn btn-primary" id="articleTextPostButton" disabled><i class="fas fa-share-square"></i>&nbspPost</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block localJS %}
+<script src="/static/js/articleThread.js"></script>
+{% endblock %}

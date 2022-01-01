@@ -1,0 +1,57 @@
+input:focus::placeholder {
+  color: transparent;
+}
+input:focus::-webkit-input-placeholder { color:transparent; }
+input:focus:-moz-placeholder { color:transparent; } /* FF 4-18 */
+input:focus::-moz-placeholder { color:transparent; } /* FF 19+ */
+input:focus:-ms-input-placeholder { color:transparent; } /* IE 10+ */
+
+textarea:focus::placeholder {
+  color: transparent;
+  outline: none;
+  resize: none;
+}
+textarea:focus::-webkit-textarea-placeholder { color:transparent; }
+textarea:focus:-moz-placeholder { color:transparent; } /* FF 4-18 */
+textarea:focus::-moz-placeholder { color:transparent; } /* FF 19+ */
+textarea:focus:-ms-textarea-placeholder { color:transparent; } /* IE 10+ */
+
+#thumbnailDiv {
+    display: inline-block;
+    text-align: center;
+
+}
+
+.thumbnailDiv img {
+    max-height: 75px;
+    border-radius: 50%;
+}
+
+#messageThread {
+    line-height: normal;
+    max-height: 50vh;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+#messageText {
+    line-height: normal;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+.messageTextExisting {
+    white-space: pre-wrap;
+}
+
+#textEntryAccordion {
+    display: none;
+}
+
+#preload {
+    background-color:#dedede;
+    max-height: 50vh;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    display: none;
+}

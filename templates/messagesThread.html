@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/messagesThread.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    Send a message
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="col-lg-9 mx-auto mb-5">
+        <h1>Send a message</h1>
+        <div class="d-flex justify-content-center my-5">
+            <a href="/messages/view" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-left"></i>&nbsp;See all your messages</a>
+        </div>
+        <div class="d-flex justify-content-left mt-4">
+            <form action="/messages/thread/" method="POST" id="messagesThreadForm" name="messagesThreadForm">
+                <input type="hidden" name="recipientsCSV" value={{ recipients }} >
+                <input type="hidden" name="currentUserID" value={{ userDict['id'] }} >
+                <div class="mb-4">
+                  <label for="name" class="form-label">Begin typing a person's name:</label>
+                  <input type="text" class="form-control" id="name" name="name" size="30" placeholder="You may add up to 9 people" autocomplete="off">
+                </div>
+                <div id="preload" class="p-3">
+                </div>
+                <div id="messageRecipientsList" class="mb-4">
+                    {% for row in peopleRows %}
+                        <span class="badge rounded-pill bg-primary" id={{ "namePill" + row['id']|string }}>{{ row['displayName'] }}&nbsp;<i class="fas fa-window-close"></i></span>
+                    {% endfor %}
+                </div>
+        </div>
+        <!--begin messageThread-->
+        <div id="messageThread" class="mb-4">
+            {% if threadRows|length > 0 %}
+                {% for row in threadRows %}
+                <div class="row mb-1 p-1 {{ loop.cycle('odd', 'even') }}">
+                    <div  class="thumbnailDiv col-md-auto mx-auto d-flex justify-content-left">
+                        <img class = "thumbnailImage" alt={{ row['displayName'] }} src={{ "/static/avatars/" + row['profileImage'] }}>
+                    </div>
+                    <div class="col">
+                        <p><strong>{{ row['displayName'] }}</strong> / <small>{{ row['dateTimeString'] }}</small></p>
+                        <p class="messageTextExisting">{{ row['text'] }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <!--end messageThread-->
+
+        <!--begin text entry accordion -->
+        <div class="accordion mb-4" id="textEntryAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="textEntryCollapseHeading">
+                    <button class="accordion-button collapsed" id="textEntryCollapseButton" type="button" data-bs-toggle="collapse" data-bs-target="#textEntryCollapse" aria-expanded="true" aria-controls="textEntryCollapse">
+                    Write a new message
+                    </button>
+                </h2>
+                <div id="textEntryCollapse" class="accordion-collapse collapse" aria-labelledby="textEntryCollapseHeadin" data-bs-parent="#textEntryAccordion">
+                    <div class="accordion-body form-group">
+                        <div class="d-flex justify-content-center">
+                            <textarea class="form-control" id="messageText" name="messageText" cols="60" rows="10" placeholder="Type your message here"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-evenly mt-3" id="textEntryActionButtons">
+                            <button type="button" class="btn btn-secondary" id="messageTextCancelButton"><i class="fas fa-window-close"></i>&nbsp Cancel</button>
+                            <button type="button" class="btn btn-primary" id="messageTextSendButton" disabled><i class="fas fa-share-square"></i>&nbsp Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </form>
+        <!--end text entry accordion -->
+    </div>
+</div>
+{% endblock %}
+
+
+{% block localJS %}
+<script src="/static/js/messagesThread.js"></script>
+{% endblock %}

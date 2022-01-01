@@ -1,0 +1,172 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/people.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    People
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <h1>Find People</h1>
+    <div class="row">
+        <div class="col-lg-6">
+          <form action="/people" method="GET" id="peopleGeoForm" name="peopleGeoForm">
+            <div id="peopleGeoActionsDiv" class="d-none">
+              <a href="/people" id="peopleResetButton" class="btn btn-md btn-secondary mb-3 mx-3">Reset</a>
+            </div>
+            <div class="mb-4">
+              <label for="name" class="form-label">Enter any part of their name:</label>
+              <input type="text" class="form-control" id="name" name="name" {% if 'name' in queryDict %} value={{ queryDict['name'] }}{% endif %}>
+            </div>
+            <!--begin the accordion for filtering by geography-->
+            <div class="accordion mb-4" id="geoAccordion">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="geoSelectCollapseHeading">
+                  <button class="accordion-button collapsed" id="geoButton" type="button" data-bs-toggle="collapse" data-bs-target="#geoSelectCollapse" aria-expanded="true" aria-controls="geoSelectCollapse">
+                    Find people by location
+                  </button>
+                </h2>
+                <div id="geoSelectCollapse" class="accordion-collapse collapse" aria-labelledby="geoSelectCollapseHeading" data-bs-parent="#geoAccordion">
+                  <div class="accordion-body">
+                      <div class="mb-4">
+                        <label for="state" class="form-label">State:</label>
+                        <select class="form-select" id="state" name="state">
+                          <option value="">Choose...</option>
+                          {% for item in selects4Dict['state'] %}
+                          <option {% if item == queryDict['state'] %}selected{% endif %}>{{ item }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="mb-4">
+                        <label for="city" class="form-label">City:</label>
+                        <select class="form-select" id="city" name="city">
+                          <option value="">Choose...</option>
+                          {% for item in selects4Dict['city'] %}
+                          <option {% if item == queryDict['city'] %}selected{% endif %}>{{ item }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="mb-4">
+                        <label for="county" class="form-label">County:</label>
+                        <select class="form-select" id="county" name="county">
+                          <option value="">Choose...</option>
+                          {% for item in selects4Dict['county'] %}
+                          <option {% if item == queryDict['county'] %}selected{% endif %}>{{ item }}</option>
+                          {% endfor %}
+                        </select>
+                      <p><em>Note: database of states, cities and counties provided courtesy of <a href="https://simplemaps.com/data/us-cities">Simplemaps.com</a>.</em></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+               </div>
+              <!--end the accordion for filtering by geography-->
+              <!--begin the accordion for filtering by loved ones-->
+              <div class="accordion mb-4" id="lovedOnesAccordion">
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="lovedOnesSelectCollapseHeading">
+                    <button class="accordion-button collapsed" id="lovedOnesButton" type="button" data-bs-toggle="collapse" data-bs-target="#lovedOnesSelectCollapse" aria-expanded="true" aria-controls="lovedOnesSelectCollapse">
+                      Find people by the loved ones they support
+                    </button>
+                  </h2>
+                  <div id="lovedOnesSelectCollapse" class="accordion-collapse collapse" aria-labelledby="lovedOnesSelectCollapseHeading" data-bs-parent="#lovedOnesAccordion">
+                    <div class="accordion-body">
+                      <div class="mb-4">
+                        <label for="relationship" class="form-label">Person they're supporting:</label>
+                        <select class="form-select" id="relationship" name="relationship">
+                          <option value="">Choose...</option>
+                          {% for item in selects3Dict['relationships'] %}
+                          <option value="{{ item['id'] }}"{% if 'relationship' in queryDict and item['id'] == queryDict['relationship']|int %} selected{% endif %}>{{ item['relationship'] }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="mb-4">
+                        <label for="challenge" class="form-label">who is living with:</label>
+                        <select class="form-select" id="challenge" name="challenge">
+                          <option value="">Choose...</option>
+                          {% for item in selects3Dict['challenges'] %}
+                          <option value="{{ item['id'] }}"{% if 'challenge' in queryDict and item['id'] == queryDict['challenge']|int %} selected{% endif %}>{{ item['challenge'] }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="mb-4">
+                        <label for="age" class="form-label">Their age is:</label>
+                        <select class="form-select" id="age" name="age">
+                          <option value="">Choose...</option>
+                          {% for item in selects3Dict['ages'] %}
+                          <option value="{{ item['id'] }}"{% if 'age' in queryDict and item['id'] == queryDict['age']|int %} selected{% endif %}>{{ item['age'] }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="mb-4">
+                        <label for="gender" class="form-label">Their gender is:</label>
+                        <select class="form-select" id="gender" name="gender">
+                          <option value="">Choose...</option>
+                          {% for item in selects3Dict['genders'] %}
+                          <option value="{{ item['id'] }}"{% if 'gender' in queryDict and item['id'] == queryDict['gender']|int %} selected{% endif %}>{{ item['gender'] }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                  </div>
+                </div>
+              </div>
+             </div>
+            <!--end the accordion for filtering by loved ones-->
+          </form>
+        </div>
+        <div class="col-lg-6">
+            {% if peopleRows|length > 0 %}
+                {% for row in peopleRows %}
+                <div class="row mb-3 p-2 {{ loop.cycle('odd', 'even') }}">
+                    <div  class="thumbnailDiv col-md-auto mx-auto d-flex justify-content-left">
+                        <figure class = "thumbnailFigure">
+                            <img class = "thumbnailImage" alt={{ row['displayName'] }} src={{ "/static/avatars/" + row['profileImage'] }}>
+                            <!--<figcaption class = "thumbnailFigcaption">{{ row["displayName"] }}</figcaption>-->
+                        </figure>
+                    </div>
+                    <div class="col">
+                        <h5><a href={{ '/person/' + row['username'].replace(' ','%20') }}>{% if row['firstName'] %}
+                                {{row['firstName']}}
+                            {% endif %}
+                            {% if row['firstName'] and row['lastName'] %}
+
+                            {% endif %}
+                            {% if row['lastName'] %}
+                                {{row['lastName']}}
+                            {% endif %}
+                            {% if (row['firstName'] or row['lastName']) %}
+                                /
+                            {% endif %}
+                             {{ row['username'] }}
+                        </a></h5>
+                        <p>
+                        {% if row['city'] %}{{ row['city'] }}{% endif %}
+
+                        {% if row['city'] and (row['county'] or row['state']) %} / {% endif %}
+
+                        {% if row['county'] %}{{ row['county'] }} county{% endif %}
+
+                        {% if row['state'] %} / {% endif %}
+
+                        {% if row['state'] %}{{ row['state'] }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="bg-warning p-4">We can't find any people who match your selections. Please try different selections. Or <a href="/people">refresh the page</a> to start over. </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block localJS %}
+<script src="/static/js/people.js"></script>
+{% endblock %}

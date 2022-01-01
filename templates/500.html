@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Error
+{% endblock %}
+
+{% block main %}
+<div>
+    <h1>We cannot complete your request</h1>
+</div>
+<div>
+    <p>We value your feedback and we want to know about errors in our program. Please notify the administrator of this website. <a href="{{ url_for('.index') }}">Go to home page.</a></p>
+</div>
+{% endblock %}

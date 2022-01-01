@@ -1,0 +1,19 @@
+#wysiwygButtonRow a {
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+
+#discussionText {
+    background-color: #efefef;
+    line-height: normal;
+    min-height: 20em;
+    max-height: 50vh;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    padding: 5px;
+}
+
+#textEntryActionButtons button {
+    margin: 5px;
+}
+

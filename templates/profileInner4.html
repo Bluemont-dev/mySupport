@@ -1,0 +1,45 @@
+        <form action="/profile4" method="POST" id="profileForm4" name="profileForm4">
+            <p>We don't need your home address, but you might find it helpful to share your city and/or county, so you can ask questions and share intel with others about local treatment providers, government services, and support groups.</p>
+            <input id="latestSelection" name="latestSelection" type="hidden" value="">
+            <input id="formSource4" name="formSource4" type="hidden" value={{ formSource }}>
+            <label for="zip">ZIP code (5 digits)</label>
+            <div class="mb-3">
+                {% if not userRows[0]["zip"] %}
+                <input  type="text" class="form-control" id="zip" name="zip" minlength="5" maxlength="5">
+                {% else %}
+                <input  type="text" class="form-control" id="zip" name="zip" minlength="5" maxlength="5" value={{ userRows[0]["zip"] }}>
+                {% endif %}
+            </div>
+            <div class="mb-4">
+              <label for="state" class="form-label">State:</label>
+              <select class="form-select" id="state" name="state">
+                <option value="">Choose...</option>
+                {% for item in selects4Dict['state'] %}
+                <option{% if userRows[0]['state'] == item %} selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-4">
+              <label for="city" class="form-label">City:</label>
+              <select class="form-select" id="city" name="city">
+                <option value="">Choose...</option>
+                {% for item in selects4Dict['city'] %}
+                <option{% if userRows[0]['city'] == item %} selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-4">
+              <label for="county" class="form-label">County:</label>
+              <select class="form-select" id="county" name="county">
+                <option value="">Choose...</option>
+                {% for item in selects4Dict['county'] %}
+                <option{% if userRows[0]['county'] == item %} selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+            <p><em>Note: database of states, cities and counties provided courtesy of <a href="https://simplemaps.com/data/us-cities">Simplemaps.com</a>.</em></p>
+            </div>
+            <div id="profile4ActionsDiv" class="d-none">
+              <button id="profile4SubmitButton" class="btn btn-md btn-primary mb-3 mx-3" type="submit">Save</button>
+              <button id="profile4ResetButton" class="btn btn-md btn-secondary mb-3 mx-3" type="reset">Reset</button>
+            </div>
+        </form>

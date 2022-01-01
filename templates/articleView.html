@@ -1,0 +1,130 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/articleView.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    Article - {{ articleRow['title'][0:20] }}
+{% endblock %}
+
+{% block main %}
+<div class="px-4 py-5 my-5">
+    <div class="mx-auto mb-5">
+        <div class="d-flex justify-content-center my-5">
+            <a href="/articles" class="btn btn-large btn-success mx-3"><i class="fas fa-caret-square-left"></i>&nbsp;See all articles</a>
+            <a href="/article/thread" class="btn btn-large btn-success mx-3"><i class="fas fa-plus-square"></i>&nbsp;Share a new article</a>
+        </div>
+        <div class = "d-flex justify-content-start" id="articleMetaStuff">
+            <div class = "thumbnailDiv">
+               <img class = "thumbnailImage" alt={{ articleRow['displayName'] }} src={{ "/static/avatars/" + articleRow['profileImage'] }}>
+            </div>
+            <div>
+                <strong><a href="{{ "/person/" + articleRow['username'] }}">{{ articleRow['displayName'] }}</strong></a><br>
+                {{ articleRow['dateTimeString'] }}
+            </div>
+        </div>
+        <div class="my-4">
+            <h3>{{ articleRow['title'] }}</h3>
+            {{ articleRow['website'] }} / {{ articleRow['publishedDateTimeString'] }}
+        </div>
+        <div id = "articleWrapper">
+            <div class="row">
+                {% if articleRow['ogImage'] %}
+                <div class="col-lg-2" id = "ogImage">
+                    <img src='{{ articleRow['ogImage'] }}'>
+                </div>
+                {% endif %}
+                <div class="col" id = "articleDescriptionAndLink">
+                    {% if articleRow['description'] %}{{ articleRow['description'] }}<br>{% endif %}
+                    <a href={{articleRow['url'] }} target="_blank" type="button" class="btn btn-sm btn-outline-primary mt-4">Read the full article</a>
+                </div>
+            </div>
+            {% if userDict['id'] == articleRow['senderID'] %}
+            <div id="articleEditButtons" class="mt-3">
+                <a href={{ "/article/edit/" + articleRow['id']|string }} class="btn btn-large btn-primary mx-3"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                <a href="#" onclick="javascript:articleDeletePrompt(this.id);return false;" class="btn btn-large btn-secondary mx-3" id={{ "articleDeleteButton" + articleRow['id']|string }}><i class="fas fa-trash-alt"></i>&nbsp;Delete</a>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="my-3" id="commentsAll">
+            {% if commentRows|length > 0 %}
+                {% for row in commentRows %}
+                <div class="d-flex align-items-top commentItemRow mb-4">
+                        <div class="thumbnailDiv d-flex justify-content-center">
+                            <img class = "thumbnailImage" alt={{ row["displayName"] }} src={{ "/static/avatars/" + row["profileImage"] }}>
+                        </div>
+                        <div>
+                            <div class="commentItemTextDiv" id={{ 'commentItemTextDiv' + row['id']|string}} {% if commentEditMode == 'edit' and commentEditID == row['id']|string %}contenteditable = 'true'{% endif %}>
+                                {% if commentEditMode == 'edit' and userDict['id'] and (userDict['id'] == row['senderID']) %}
+                                    {{ row['text'] }}
+                                {% else %}
+                                    <p>
+                                    <strong><a href="{{ "/person/" + row['username'] }}">{{ row['displayName'] }}</a></strong><br>
+                                    {{ row['text'] }}
+                                    </p>
+                                {% endif %}
+                            </div>
+                            <div class="commentItemDateTime">
+                                <small>{{ row['dateTimeString'] }}</small>
+                            </div>
+                        </div>
+                        {% if userDict['id'] and (userDict['id'] == row['senderID']) %}
+                        <div class="col-lg-2 d-flex justify-content-center commentEditButtons" id={{ 'commentEditPair' + row['id']|string }}>
+                            {% if commentEditMode == 'create' %}
+                            <div>
+                                <button type="button" class="btn btn-sm btn-secondary mx-1 commentEditButton" id={{ 'commentEditButton' + row['id']|string}}><i class="fas fa-pencil-alt"></i>&nbspEdit</button>
+                                <button type="button" class="btn btn-sm btn-danger mx-1 commentDeleteButton" id={{ 'commentDeleteButton' + row['id']|string}}><i class="fas fa-trash-alt"></i>&nbspDelete</button>
+                            </div>
+                            {% endif %}
+                            {% if commentEditMode == 'edit' and commentEditID == row['id']|string %}
+                                <form action={{ '/article/' + articleRow['id']|string + '/comment/' + row['id']|string + '/edit' }} method="POST" name="commentEditForm" id="commentEditForm">
+                                    <input type="hidden" name="commentEditTextContent" id="commentEditTextContent" value="">
+                                    <input type="hidden" name="commentEditMode" id="commentEditMode" value="edit">
+                                    <input type="hidden" name="commentEditID" id="commentEditID" value={{ row['id']|string}} >
+                                    <div id={{ 'commentSavePair' + row['id']|string }}>
+                                        <a href={{ '/article/' + articleRow['id']|string + "#commentItemTextDiv" + commentEditID }} type="button" class="btn btn-sm btn-secondary mx-1 commentEditCancelButton" id={{ 'commentEditCancelButton' + row['id']|string}}><i class="fas fa-window-close"></i>&nbspCancel</a>
+                                        <button type="button" class="btn btn-sm btn-danger mx-1 commentEditSaveButton" id={{ 'commentEditSaveButton' + row['id']|string}}><i class="fas fa-save"></i>&nbspSave</button>
+                                    </div>
+                                </form>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if userDict['id'] %}
+            <form action={{ '/article/comment/' + articleRow['id']|string }} method="POST" name="commentEntryForm" id="commentEntryForm">
+            <input type="hidden" name="commentTextContent" id="commentTextContent" value="">
+            <input type="hidden" name="editMode" id="editMode" value="create">
+            <input type="hidden" name="articleID" id="articleID" value={{ articleRow['id']|string }}>
+            <div class="row d-flex align-items-center" id="commentEntryRow">
+                    <div class="thumbnailDiv col-lg-1 d-flex justify-content-center">
+                        <img class = "thumbnailImage" alt={{ userDict["displayName"] }} src={{ "/static/avatars/" + userDict["profileImage"] }}>
+                    </div>
+                    <div class="col">
+                        <div id="commentTextEntryDiv" contenteditable>
+                            Add a comment ...
+                        </div>
+                        <div class="d-none justify-content-center mt-3" id="textEntryActionButtons">
+                            <button type="button" class="btn btn-secondary mx-3" id="commentTextCancelButton"><i class="fas fa-window-close"></i>&nbsp Cancel</button>
+                            <button type="button" class="btn btn-primary mx-3" id="commentTextPostButton"><i class="fas fa-share-square"></i>&nbspPost</button>
+                        </div>
+                    </div>
+            </div>
+            </form>
+            {% else %}
+            <p>To comment on this article, <a href="/signin">sign in</a> or <a href="/register">register</a>.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block localJS %}
+<script src="/static/js/articleView.js"></script>
+{% endblock %}
