@@ -3,6 +3,7 @@ import os
 import csv
 import copy
 import bleach
+import psycopg2
 import urllib.parse
 from urllib.parse import urlparse
 from urllib.request import urlopen
@@ -70,11 +71,30 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Configure CS50 Library to use SQLite database
-db = SQL("sqlite:///mySupport.db")
+# # Configure CS50 Library to use SQLite database
+# db = SQL("sqlite:///mySupport.db")
 
-# Enable foreign key constraints in SQLite
-db.execute ("PRAGMA foreign_keys=ON")
+# # Enable foreign key constraints in SQLite
+# db.execute ("PRAGMA foreign_keys=ON")
+
+# get db settings from env
+db = {}
+db['host'] = os.getenv('DATABASE_HOST')
+db['database'] = os.getenv('DATABASE')
+db['user'] = os.getenv('DATABASE_USER')
+db['password'] = os.getenv('DATABASE_PASSWORD')
+
+# connect to the db
+print('Connecting to the PostgreSQL database...')
+conn = psycopg2.connect(
+    host=db['host'],
+    database=db['database'],
+    user=db['user'],
+    password=db['password'])
+
+# create a cursor
+cur = conn.cursor()
+
 
 # ===== BEGIN ROUTES ========
 
