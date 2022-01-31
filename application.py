@@ -4,6 +4,8 @@ import csv
 import copy
 import bleach
 import psycopg2
+import psycopg2.extras
+from psycopg2 import sql
 import urllib.parse
 from urllib.parse import urlparse
 from urllib.request import urlopen
@@ -12,7 +14,7 @@ from errors import errorView, flashStyling
 from helpers import email_required, login_required
 from datetime import datetime, date
 from operator import itemgetter
-from cs50 import SQL
+# from cs50 import SQL
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for, jsonify
 from flask_session import Session
 from flask_mail import Mail, Message
@@ -92,8 +94,15 @@ conn = psycopg2.connect(
     user=db['user'],
     password=db['password'])
 
-# create a cursor
-cur = conn.cursor()
+# # create a cursor
+# cur = conn.cursor()
+# # close a cursor
+# cur.close()
+
+# or do them both in one function
+# with conn.cursor() as curs:
+#     curs.execute(SQL)
+# the cursor is now closed
 
 
 # ===== BEGIN ROUTES ========
@@ -1436,10 +1445,14 @@ def signin():
             return redirect("/signin")
 
         # # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE email = ?", request.form.get("email"))
-
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        # dict_cur.execute("SELECT * FROM users WHERE email = (%s)", request.form.get('email'))
+        dict_cur.execute("""SELECT * FROM users WHERE email = (%s)""", [request.form.get('email')])
+        rows = dict_cur.fetchall()
+        dict_cur.close() 
+        # the cursor is now closed
         # # Ensure email exists and password is correct
-        if len(rows) != 1 or not check_password_hash(rows[0]["pwHash"], request.form.get("password")):
+        if len(rows) != 1 or not check_password_hash(rows[0]["pw_hash"], request.form.get("password")):
             flash("Invalid email or password. Try again, or use the \"Forgot / Reset password\" link at the bottom of this form",flashStyling("danger"))
             return redirect("/signin")
 
