@@ -94,6 +94,9 @@ conn = psycopg2.connect(
     user=db['user'],
     password=db['password'])
 
+# set default so that every query is committed unless a transaction block is explicitly used
+conn.autocommit = True
+
 # # create a cursor
 # cur = conn.cursor()
 # # close a cursor
@@ -102,7 +105,7 @@ conn = psycopg2.connect(
 # or do them both in one function
 # with conn.cursor() as curs:
 #     curs.execute(SQL)
-# the cursor is now closed
+# the cursor is now closed as a result of exiting the block
 
 
 # ===== BEGIN ROUTES ========
@@ -115,19 +118,24 @@ def index():
     retrieveLimit = 5
     allDiscussionsList = []
     commentCount = 0
-    # retrieve  recent discussions from db
-    allDiscussionIDs = db.execute("""
-    SELECT id FROM discussions
-    ORDER BY dateCreated DESC
-    LIMIT ?;
-    """, retrieveLimit)
+    # # retrieve  recent discussions from db
+    # allDiscussionIDs = db.execute("""
+    # SELECT id FROM discussions
+    # ORDER BY dateCreated DESC
+    # LIMIT ?;
+    # """, retrieveLimit)
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT id FROM discussions ORDER BY date_created DESC LIMIT (%s)""",[retrieveLimit])
+    allDiscussionIDs = dict_cur.fetchall()
     # print(allDiscussionIDs)
     # loop thru discussions and prep each one for display
     for item in allDiscussionIDs:
         commentCount = 0
         discussionRow = getDiscussionRowsForDisplay(item['id'])
         # count number of comments for each, add it to the dict
-        commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE discussionID = ?", item['id'])
+        # commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE discussionID = ?", item['id'])
+        dict_cur.execute("""SELECT COUNT(*) FROM comments WHERE discussion_id = (%s)""",[item['id']])
+        commentCount = dict_cur.fetchone()
         discussionRow[0]['commentCount'] = commentCount[0]['COUNT(*)']
         # get textContent from HTML for each discussion; add it to the dict
         textContent = getTextContentFromHTML(discussionRow[0]['text'])
@@ -139,26 +147,37 @@ def index():
     allArticlesList = []
     commentCount = 0
     # retrieve most recent articles from db
-    allArticleIDs = db.execute("""
-    SELECT id FROM articles
-    ORDER BY dateCreated DESC
-    LIMIT ?;
-    """, retrieveLimit)
+    # allArticleIDs = db.execute("""
+    # SELECT id FROM articles
+    # ORDER BY dateCreated DESC
+    # LIMIT ?;
+    # """, retrieveLimit)
+    dict_cur.execute("""SELECT id FROM articles
+    ORDER BY date_created DESC
+    LIMIT (%s)""",[retrieveLimit])
+    allArticleIDs = dict_cur.fetchall()
     # loop thru articles and prep each one for display
     for item in allArticleIDs:
         commentCount = 0
         articleRow = getArticleRowsForDisplay(item['id'])
         # count number of comments for each, add it to the dict
-        commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE articleID = ?", item['id'])
+        # commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE articleID = ?", item['id'])
+        dict_cur.execute("""SELECT COUNT(*) FROM comments WHERE article_id = (%s)""",[item['id']])
+        commentCount = dict_cur.fetchone()
         articleRow[0]['commentCount'] = commentCount[0]['COUNT(*)']
         articleRow[0]['publishedDateTimeString'] = articleRow[0]['publishedDateTimeString'][:articleRow[0]['publishedDateTimeString'].find('-')-1]
         articleRow[0]['website'] = urlparse(articleRow[0]['url']).netloc
         allArticlesList.append(articleRow[0])
-    peopleRows = db.execute("SELECT id, firstName, lastName, username, displayNameOption, dateJoined, city, county, state, profileImage FROM users ORDER BY dateJoined DESC LIMIT ?", retrieveLimit)
+    # peopleRows = db.execute("SELECT id, firstName, lastName, username, displayNameOption, dateJoined, city, county, state, profileImage FROM users ORDER BY dateJoined DESC LIMIT ?", retrieveLimit)
+    dict_cur.execute("""SELECT id, first_name, last_name, username, display_name_option, date_joined, city, county, state, profile_image FROM users ORDER BY date_joined DESC LIMIT (%s)""",[retrieveLimit])
+    peopleRows = dict_cur.fetchall()
+    dict_cur.close()
+    peopleRows = [dict(row) for row in peopleRows]
+    print(peopleRows)
     for row in peopleRows:
         personDisplayName = buildDisplayName(row)
         row['displayName'] = personDisplayName
-        row['joinedDateString'] = buildDateTimeString(row['dateJoined'])
+        row['joinedDateString'] = buildDateTimeString(row['date_joined'])
         # truncate the dateJoined because the time is irrelevant
         row['joinedDateString'] = row['joinedDateString'][:row['joinedDateString'].find('-')-1]
     return render_template ("index.html", userDict = userDict, allDiscussionsList = allDiscussionsList, allArticlesList = allArticlesList, peopleRows = peopleRows)
@@ -1451,12 +1470,12 @@ def signin():
         rows = dict_cur.fetchall()
         dict_cur.close() 
         # the cursor is now closed
-        # # Ensure email exists and password is correct
+        # Ensure email exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0]["pw_hash"], request.form.get("password")):
             flash("Invalid email or password. Try again, or use the \"Forgot / Reset password\" link at the bottom of this form",flashStyling("danger"))
             return redirect("/signin")
 
-        # # Remember which user has logged in
+        # Remember which user has logged in
         setSessionValues(rows)
         # continue to destination page, or to home page if no destination
         if not request.form.get("next"):
@@ -1541,16 +1560,22 @@ def buildUserDict():
     else:
         # retrieve properties from authenticated user's db record for sending to view templates
         displayName = ""
-        rows = db.execute("SELECT * FROM users WHERE id = ?", session.get("id"))
+
+        # rows = db.execute("SELECT * FROM users WHERE id = ?", session.get("id"))
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT * FROM users WHERE id = (%s)""", [session.get('id')])
+        rows = dict_cur.fetchall()
+        rows = [dict(row) for row in rows]
+
         displayNameMaxLength = 20
-        if rows[0]["displayNameOption"] == 1:
+        if rows[0]["display_name_option"] == 1:
             displayName = rows[0]["username"]
             # truncate the string to maxlength w/ellipsis if needed
             if len(displayName) > displayNameMaxLength:
                 displayName = displayName[:displayNameMaxLength-3] + "..."
         else:
-            firstName = rows[0]["firstName"]
-            lastName = rows[0]["lastName"]
+            firstName = rows[0]["first_name"]
+            lastName = rows[0]["last_name"]
             if len(firstName) + len(lastName) + 1 > displayNameMaxLength:
                 if len(firstName) < displayNameMaxLength - 2:
                     #this means we could fit the entire first name w/ last initial
@@ -1561,27 +1586,31 @@ def buildUserDict():
             else:
                 displayName = firstName + " " + lastName
         # now get a count of unread messages
-        unreadMessageCount = db.execute("SELECT COUNT (messageID) FROM MessageToRecipient WHERE recipientID = ? AND read = 0", session.get("id"))
+        dict_cur.execute("""SELECT COUNT (message_id) FROM message_recipient WHERE recipient_id = (%s) AND read = 'false'""",[session.get("id")])
+        unreadMessageCount = dict_cur.fetchone()
+        # unreadMessageCount = db.execute("SELECT COUNT (messageID) FROM MessageToRecipient WHERE recipientID = ? AND read = 0", session.get("id"))
+        dict_cur.close()
+
         userDict = {
             "id":rows[0]["id"],
             "displayName":displayName,
-            "profileImage":rows[0]["profileImage"],
-            "emailConfirmed":rows[0]["emailConfirmed"],
+            "profileImage":rows[0]["profile_image"],
+            "emailConfirmed":rows[0]["email_confirmed"],
             "role":rows[0]["role"],
-            "unreadMessageCount":unreadMessageCount[0]['COUNT (messageID)']
+            "unreadMessageCount":unreadMessageCount['count']
             }
     return userDict
 
 def buildDisplayName(userRow):
     displayNameMaxLength = 20
-    if userRow["displayNameOption"] == 1:
+    if userRow["display_name_option"] == 1:
         displayName = userRow["username"]
         # truncate the string to maxlength w/ellipsis if needed
         if len(displayName) > displayNameMaxLength:
             displayName = displayName[:displayNameMaxLength-3] + "..."
     else:
-        firstName = userRow["firstName"]
-        lastName = userRow["lastName"]
+        firstName = userRow["first_name"]
+        lastName = userRow["last_name"]
         if len(firstName) + len(lastName) + 1 > displayNameMaxLength:
             if len(firstName) < displayNameMaxLength - 2:
                 #this means we could fit the entire first name w/ last initial
@@ -1594,22 +1623,7 @@ def buildDisplayName(userRow):
     return displayName
 
 def buildDateTimeString(dateCreated):
-    months = ["January","February","March","April","May","June","July","August","September","October","November","December"]
-    dateAll = dateCreated.split(" ")[0]
-    timeAll = dateCreated.split(" ")[1]
-    dateTimeString = ""
-    dateTimeString += months[int(dateAll.split("-")[1])-1] + " " + dateAll.split("-")[2] + ", " + dateAll.split("-")[0]
-    dateTimeString += " - "
-    hourInt = int(timeAll.split(":")[0])
-    hourInt = hourInt % 12
-    hourString = str(hourInt)
-    if hourString == "0":
-        hourString = "12"
-    minuteString = timeAll.split(":")[1]
-    suffix = "AM"
-    if int(timeAll.split(":")[0]) > 11:
-        suffix = "PM"
-    dateTimeString += hourString + ":" + minuteString + " " + suffix
+    dateTimeString = dateCreated.strftime('%B %d, %Y - %I:%M %p')
     return dateTimeString
 
 def sendVerificationEmail(emailAddress):
@@ -1624,10 +1638,10 @@ def sendVerificationEmail(emailAddress):
 def setSessionValues(rows):
     session["id"] = rows[0]["id"]
     session["username"] = rows[0]["username"]
-    session["displayNameOption"] = rows[0]["displayNameOption"]
+    session["displayNameOption"] = rows[0]["display_name_option"]
     session["role"] = rows[0]["role"]
     session["email"] = rows[0]["email"]
-    session["emailConfirmed"] = rows[0]["emailConfirmed"]
+    session["emailConfirmed"] = rows[0]["email_confirmed"]
 
 # build an entire list consisting of a user's db record, usually  for sending to a view
 def getUserRows(id):
