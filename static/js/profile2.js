@@ -14,7 +14,7 @@ thumbnailSaveStatus = document.getElementById("thumbnailSaveStatus"),
 profile2SubmitButton = document.getElementById("profile2SubmitButton");
 
 
-var radios = document.profileForm2.displayNameOption;
+var radios = document.profileForm2.display_name_option;
 for (var i = 0; i < radios.length; i++) {
     radios[i].addEventListener('change', function() {
       // code goes here for both radio buttons
@@ -57,8 +57,8 @@ window.addEventListener('load', (event) => {
 
 function updateThumbnailFigcaption() {
   let username = document.profileForm2.username.value;
-  let firstName = document.profileForm2.firstName.value;
-  let lastName = document.profileForm2.lastName.value;
+  let firstName = document.profileForm2.first_name.value;
+  let lastName = document.profileForm2.last_name.value;
   let displayName = "";
   let displayNameOptionNumber = 0;
   let displayNameMaxLength = 20;
@@ -149,7 +149,7 @@ profile2SubmitButton.addEventListener("click", function(e) {
   else {
     displayNameOption= 2;
   }
-  let argstring = `username=${profileForm2.username.value}&firstName=${profileForm2.firstName.value}&lastName=${profileForm2.lastName.value}&displayNameOption=${displayNameOption}`;
+  let argstring = `username=${profileForm2.username.value}&firstName=${profileForm2.first_name.value}&lastName=${profileForm2.last_name.value}&displayNameOption=${displayNameOption}`;
   profileForm2.setAttribute("action","/profile2?" + argstring);
   profileForm2.submit();
 }, false);

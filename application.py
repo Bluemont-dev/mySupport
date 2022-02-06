@@ -1131,6 +1131,7 @@ def profile2():
         uploaded_file = request.files['file']
         filename = uploaded_file.filename
         # print(f"Filename is {filename}.")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         if filename != '':
             file_ext = os.path.splitext(filename)[1]
             if file_ext not in app.config['UPLOAD_EXTENSIONS'] or \
@@ -1140,58 +1141,61 @@ def profile2():
                 return errorView(userDict,"File type not allowed","We cannot accept the file type you tried to upload.","Try again",nextURLs['tryAgainURL'])
             uploaded_file.save(os.path.join(app.config['UPLOAD_PATH'], str(session.get("id")) + file_ext))
             #update the db with filename
-            db.execute("BEGIN TRANSACTION")
+            dict_cur.execute("""BEGIN""")
             try:
-                db.execute("UPDATE users SET profileImage = ? WHERE id = ?", str(session.get("id")) + file_ext, session.get("id"))
+                dict_cur.execute("""UPDATE users SET profile_image = (%s) WHERE id = (%s)""", [str(session.get("id")) + file_ext, session.get("id")])
             except:
-                db.execute("ROLLBACK")
+                dict_cur.execute("""ROLLBACK""")
                 abort(500)
-            db.execute("COMMIT")
+            dict_cur.execute("""COMMIT""")
         # retrieve the user's db record and store in a dict
-        rows = db.execute("SELECT * FROM users WHERE id = ?", session.get("id"))
+        dict_cur.execute("""SELECT * FROM users WHERE id = (%s)""", [session.get("id")])
+        rows = [dict(row) for row in dict_cur.fetchall()]
         # compare submitted username to existing. If different, make sure the new one is unique. If not redirect to same page with error message. Else, update db record and move on to next step.
         if request.args.get("username") != rows[0]["username"]:
-            usernameCheck = db.execute("SELECT * FROM users WHERE username = ?", request.args.get("username"))
+            dict_cur.execute("""SELECT * FROM users WHERE username = (%s)""", [request.args.get("username")])
+            usernameCheck = [dict(row) for row in dict_cur.fetchall()]
             if len(usernameCheck) > 0:
                 #requested username already exists in the db
                 flash("The username you requested (" + request.args.get('username') + ") is already in use. Please try again.", flashStyling("danger"))
                 return redirect(nextURLs['tryAgainURL'])
             #update the db with username
-            db.execute("BEGIN TRANSACTION")
+            dict_cur.execute("""BEGIN""")
             try:
-                db.execute("UPDATE users SET username = ? WHERE id = ?", request.args.get("username"), session.get("id"))
+                dict_cur.execute("""UPDATE users SET username = (%s) WHERE id = (%s)""", [request.args.get("username"), session.get("id")])
             except:
-                db.execute("ROLLBACK")
+                dict_cur.execute("""ROLLBACK""")
                 abort(500)
-            db.execute("COMMIT")
+            dict_cur.execute("""COMMIT""")
         # compare submitted firstName to existing. If different, update firstName in db record
-        if request.args.get("firstName") != rows[0]["firstName"]:
-            db.execute("BEGIN TRANSACTION")
+        if request.args.get("first_name") != rows[0]["first_name"]:
+            dict_cur.execute("""BEGIN""")
             try:
-                db.execute("UPDATE users SET firstName = ? WHERE id = ?", request.args.get("firstName"), session.get("id"))
+                dict_cur.execute("""UPDATE users SET first_name = (%s) WHERE id = (%s)""", [request.args.get("first_name"), session.get("id")])
             except:
-                db.execute("ROLLBACK")
+                dict_cur.execute("""ROLLBACK""")
                 abort(500)
-            db.execute("COMMIT")
+            dict_cur.execute("""COMMIT""")
         # compare submitted lastName to existing. If different, update lastName in db record
         if request.args.get("lastName") != rows[0]["lastName"]:
-            db.execute("BEGIN TRANSACTION")
+            dict_cur.execute("""BEGIN""")
             try:
-                db.execute("UPDATE users SET lastName = ? WHERE id = ?", request.args.get("lastName"), session.get("id"))
+                dict_cur.execute("""UPDATE users SET last_name = (%s) WHERE id = (%s)""", [request.args.get("last_name"), session.get("id")])
             except:
-                db.execute("ROLLBACK")
+                dict_cur.execute("""ROLLBACK""")
                 abort(500)
-            db.execute("COMMIT")
+            dict_cur.execute("""COMMIT""")
         # compare submitted displayNameOption to existing. If different, update displayNameOption in db record.
-        displayNameOptionRequest = int(request.args.get("displayNameOption"))
-        if displayNameOptionRequest != rows[0]["displayNameOption"]:
-            db.execute("BEGIN TRANSACTION")
+        displayNameOptionRequest = int(request.args.get("display_name_option"))
+        if displayNameOptionRequest != rows[0]["display_name_option"]:
+            dict_cur.execute("""BEGIN""")
             try:
-                db.execute("UPDATE users SET displayNameOption = ? WHERE id = ?", displayNameOptionRequest, session.get("id"))
+                dict_cur.execute("""UPDATE users SET display_name_option = (%s) WHERE id = (%s)""", [displayNameOptionRequest, session.get("id")])
             except:
-                db.execute("ROLLBACK")
+                dict_cur.execute("""ROLLBACK""")
                 abort(500)
-            db.execute("COMMIT")
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         return redirect(nextURLs['successURL']) # or conditional destination, based on formSource
 
 @app.route("/profile3", methods = ["GET","POST"])

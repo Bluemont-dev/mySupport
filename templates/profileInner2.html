@@ -9,33 +9,33 @@
                 </div>
                 <label for="firstNameInput">First name <em>(optional)</em></label>
                 <div class="mb-3">
-                    {% if not userRows[0]["firstName"] %}
-                    <input type="text" class="form-control" id="firstNameInput" name="firstName">
+                    {% if not userRows[0]["first_name"] %}
+                    <input type="text" class="form-control" id="firstNameInput" name="first_name">
                     {% else %}
-                    <input type="text" class="form-control" id="firstNameInput" name="firstName" value={{ userRows[0]["firstName"] }}>
+                    <input type="text" class="form-control" id="firstNameInput" name="first_name" value={{ userRows[0]["first_name"] }}>
                     {% endif %}
                 </div>
                 <label for="lastNameInput">Last name or initial <em>(optional)</em></label>
                 <div class="mb-3">
-                    {% if not userRows[0]["lastName"] %}
-                    <input type="text" class="form-control" id="lastNameInput" name="lastName">
+                    {% if not userRows[0]["last_name"] %}
+                    <input type="text" class="form-control" id="lastNameInput" name="last_name">
                     {% else %}
-                    <input type="text" class="form-control" id="lastNameInput" name="lastName" value={{ userRows[0]["lastName"] }}>
+                    <input type="text" class="form-control" id="lastNameInput" name="last_name" value={{ userRows[0]["last_name"] }}>
                     {% endif %}
                 </div>
 
                 <h5>Which name do you prefer to show others?</h5>
                 <div class="form-check">
-                    <input class="form-check-input" type="radio" name="displayNameOption" id="displayNameOptionUsername"
-                    {% if userRows[0]["displayNameOption"]==1 %} checked{% endif %}>
+                    <input class="form-check-input" type="radio" name="display_name_option" id="displayNameOptionUsername"
+                    {% if userRows[0]["display_name_option"]==1 %} checked{% endif %}>
                     <label class="form-check-label" for="displayNameOptionUsername">
                     my username
                     </label>
                 </div>
                 <div class="form-check mb-3">
-                    <input class="form-check-input" type="radio" name="displayNameOption" id="displayNameOptionFirstLast"
-                    {% if userRows[0]["displayNameOption"]==2 %} checked{% endif %}
-                    {% if userRows[0]["firstName"]==None and userRows[0]["lastName"]==None %} disabled{% endif %}>
+                    <input class="form-check-input" type="radio" name="display_name_option" id="displayNameOptionFirstLast"
+                    {% if userRows[0]["display_name_option"]==2 %} checked{% endif %}
+                    {% if userRows[0]["first_name"]==None and userRows[0]["last_name"]==None %} disabled{% endif %}>
                     <label class="form-check-label" for="displayNameOptionFirstLast">
                     my first & last name
                     </label>
