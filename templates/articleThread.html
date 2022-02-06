@@ -101,7 +101,7 @@
                       <label for="challenge" class="form-label">living with: <em>(choose all that apply)</em></label>
                       <select class="form-select" id="challenge" name="challenge" multiple size="4">
                         {% for item in selectsDict['challenges'] %}
-                        <option value="{{ item['id'] }}" {% if articleRow['challengeIDs'] and item['id']|string in articleRow['challengeIDs'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if articleRow['challenge_ids'] and item['id']|string in articleRow['challenge_ids'] %}selected{% endif %}>
                             {{ item['challenge'] }}
                         </option>
                         {% endfor %}
@@ -111,7 +111,7 @@
                       <label for="age" class="form-label">whose age is:  <em>(choose all that apply)</em></label>
                       <select class="form-select" id="age" name="age" multiple size="4">
                         {% for item in selectsDict['ages'] %}
-                        <option value="{{ item['id'] }}" {% if articleRow['ageIDs'] and item['id']|string in articleRow['ageIDs'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if articleRow['age_ids'] and item['id']|string in articleRow['age_ids'] %}selected{% endif %}>
                             {{ item['age'] }}
                         </option>
                         {% endfor %}
@@ -121,7 +121,7 @@
                       <label for="gender" class="form-label">whose gender is:  <em>(choose all that apply)</em></label>
                       <select class="form-select" id="gender" name="gender" multiple size="4">
                         {% for item in selectsDict['genders'] %}
-                        <option value="{{ item['id'] }}" {% if articleRow['genderIDs'] and item['id']|string in articleRow['genderIDs'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if articleRow['gender_ids'] and item['id']|string in articleRow['gender_ids'] %}selected{% endif %}>
                             {{ item['gender'] }}
                         </option>
                         {% endfor %}

@@ -378,9 +378,9 @@ def getArticleDetails():
         'ogImage':None,
         'description':None,
         'datePublished':None,
-        'challengeIDs':"",
-        'ageIDs':"",
-        'genderIDs':""
+        'challenge_ids':"",
+        'age_ids':"",
+        'gender_ids':""
     }]
     publishedMetaItems = []
     publishedTagString = ""
@@ -443,9 +443,9 @@ def articleThreadBlank():
             'ogImage':"",
             'description':"",
             'datePublished':"",
-            'challengeIDs':"",
-            'ageIDs':"",
-            'genderIDs':""
+            'challenge_ids':"",
+            'age_ids':"",
+            'gender_ids':""
         }]
         return render_template("articleThread.html", userDict = userDict, userRows = userRows, selectsDict = selectsDict, articleRow = articleRow, editMode = editMode)
     else:
@@ -739,9 +739,9 @@ def discussionThreadBlank():
             'id':"",
             'subject':"",
             'text':"",
-            'challengeIDs':"",
-            'ageIDs':"",
-            'genderIDs':""
+            'challenge_ids':"",
+            'age_ids':"",
+            'gender_ids':""
         }]
         return render_template("discussionThread.html", userDict = userDict, userRows = userRows, selectsDict = selectsDict, discussionRow = discussionRow, editMode = editMode)
     else:
@@ -1645,7 +1645,11 @@ def setSessionValues(rows):
 
 # build an entire list consisting of a user's db record, usually  for sending to a view
 def getUserRows(id):
-    rows = db.execute("SELECT * FROM users WHERE id = ?", id)
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM users WHERE id = (%s)""", [id])
+    rows = dict_cur.fetchone()
+    dict_cur.close()
+    rows = [dict(row) for row in rows]
     return rows
 
 # check image file header data to make sure it's an image file; uses imghdr library
@@ -1680,8 +1684,12 @@ def getProfileNextURLs(formSource):
 
 # make sure an item to be edited or deleted belongs to the logged-in user, so people can't edit other people's stuff via URL args or other mayhem
 def checkOwnership(tableName, tableRowID):
-    ownerRow = db.execute("SELECT userID FROM ? WHERE id = ?", tableName, tableRowID)
-    ownerID = ownerRow[0]['userID']
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT user_id FROM (%s) WHERE id = (%s)""", [tableName, tableRowID])
+    ownerRow = dict_cur.fetchone()
+    dict_cur.close()
+    ownerRow = [dict(row) for row in ownerRow]
+    ownerID = ownerRow[0]['user_id']
     if session.get("id") != ownerID:
         flash("That item is not yours to edit.", flashStyling("danger"))
         return redirect("/")
@@ -1698,17 +1706,24 @@ def dbSimpleDictBuilder(*args):
         orderType = argList[2]
         # print(f"SELECT * FROM {table} ORDER BY {orderBy} {orderType}")
         # rows = db.execute("SELECT * FROM ? ORDER BY ? ?", table, orderBy, orderType)
-        dbExecuteString = "SELECT * FROM " + table + " ORDER BY " + orderBy + " " + orderType
-        rows = db.execute(dbExecuteString)
+        dbExecuteString = '"""SELECT * FROM ' + table + ' ORDER BY ' + orderBy + ' ' + orderType + '"""'
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute(dbExecuteString)
+        rows = dict_cur.fetchall()
+        dict_cur.close()
+        rows = [dict(row) for row in rows]
         simpleDict[table] = rows
     return (simpleDict)
 
-# build a nested dict with values from uscities.db to send to profile4 template(s) for display
+# build a nested dict with values from cities table to send to profile4 template(s) for display
 def citiesDictBuilder(zipcode,state,city,county):
-    cityConnect = SQL("sqlite:///uscities.db")
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     selects4Dict = {'zip':[], 'state':[], 'city':[], 'county':[]}
     matches4Dict = {'state':[], 'city':[], 'county':[]}
-    alphaStatesList = cityConnect.execute("SELECT DISTINCT state_name FROM cities ORDER BY state_name ASC")
+    dict_cur.execute("""SELECT DISTINCT state_name FROM cities ORDER BY state_name ASC""")
+    alphaStatesList = dict_cur.fetchall()
+    dict_cur.close()
+    alphaStatesList = [dict(row) for row in alphaStatesList]
     matchingStatesList = []
     alphaCountiesList = []
     matchingCountiesList = []
@@ -1716,26 +1731,44 @@ def citiesDictBuilder(zipcode,state,city,county):
     matchingCitiesList = []
     # if we have a zipcode and state, and nothing else, we're handling a case where a zipcode covers multiple states
     if zipcode and state:
-    # previous code that didn't work: if zipcode and state and not county and not city:
-        zipsRowsFound = cityConnect.execute("SELECT * FROM cities WHERE zips LIKE ?", "%"+zipcode+"%")
+    # if zipcode and state and not county and not city:
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT * FROM cities WHERE zips LIKE (%s)""", ["%"+zipcode+"%"])
+        zipsRowsFound = dict_cur.fetchall()
+        zipsRowsFound = [dict(row) for row in zipsRowsFound]
+        dict_cur.close()
         if len(zipsRowsFound) == 0:
             selects4Dict['zip'].append('invalid')
             super4Dict = {'selects':selects4Dict,'matches':matches4Dict}
             return super4Dict
         # zip is valid, move on
-        alphaStatesList = cityConnect.execute("SELECT DISTINCT state_name FROM cities ORDER BY state_name ASC")
-        matchingStatesList = cityConnect.execute("SELECT DISTINCT state_name FROM cities WHERE state_name = ?", state)
-        alphaCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE state_name = ? ORDER BY county_name ASC", state)
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # the following line should not be needed since it appears above the if statement
+        # alphaStatesList = cityConnect.execute("SELECT DISTINCT state_name FROM cities ORDER BY state_name ASC")
+        dict_cur.execute("""SELECT DISTINCT state_name FROM cities WHERE state_name = (%s)""", [state])
+        matchingStatesList = dict_cur.fetchall()
+        matchingStatesList = [dict(row) for row in matchingStatesList]
+        dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) ORDER BY county_name ASC""", [state])
+        alphaCountiesList = dict_cur.fetchall()
+        alphaCountiesList = [dict(row) for row in alphaCountiesList]
         # populate both city and county alpha lists based on state and zip
-        matchingCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE state_name = ? and zips LIKE ?  ORDER BY county_name ASC", state, "%"+zipcode+"%")
+        dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) and zips LIKE (%s)  ORDER BY county_name ASC""", [state, "%"+zipcode+"%"])
+        matchingCountiesList = dict_cur.fetchall()
+        matchingCountiesList = [dict(row) for row in matchingCountiesList]
         if len(matchingCountiesList) > 1:
-            matchingCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE state_name = ? and zips LIKE ? ORDER BY city ASC", state, "%"+zipcode+"%")
+            dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE state_name = (%s) and zips LIKE (%s) ORDER BY city ASC""", [state, "%"+zipcode+"%"])
+            matchingCitiesList = [dict(row) for row in dict_cur.fetchall()]
         else:
-            matchingCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE state_name = ? and county_name = ? and zips LIKE ? ORDER BY city ASC", state, matchingCountiesList[0]['county_name'], "%"+zipcode+"%")
+            dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE state_name = (%s) and county_name = (%s) and zips LIKE (%s) ORDER BY city ASC""", [state, matchingCountiesList[0]['county_name'], "%"+zipcode+"%"])
+            matchingCitiesList = [dict(row) for row in dict_cur.fetchall()]
         alphaCitiesList = matchingCitiesList
+        dict_cur.close()
     #  if we have only a zipcode, check zipcode for validity, and populate states accordingly
     elif zipcode:
-        zipsRowsFound = cityConnect.execute("SELECT * FROM cities WHERE zips LIKE ?", "%"+zipcode+"%")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT * FROM cities WHERE zips LIKE (%s)""", ["%"+zipcode+"%"])
+        zipsRowsFound = [dict(row) for row in dict_cur.fetchall()]
+        dict_cur.close()
         if len(zipsRowsFound) == 0:
             selects4Dict['zip'].append('invalid')
             super4Dict = {'selects':selects4Dict,'matches':matches4Dict}
@@ -1743,58 +1776,77 @@ def citiesDictBuilder(zipcode,state,city,county):
         else:
             selects4Dict['zip'].append(zipcode)
             # populate states with all states that match the zip code, ascending
-            matchingStatesList = cityConnect.execute("SELECT DISTINCT state_name FROM cities WHERE zips LIKE ? ORDER BY state_name ASC", "%"+zipcode+"%")
+            dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            dict_cur.execute("""SELECT DISTINCT state_name FROM cities WHERE zips LIKE (%s) ORDER BY state_name ASC""", ["%"+zipcode+"%"])
+            matchingStatesList = [dict(row) for row in dict_cur.fetchall()]
             # if only one state, populate counties the same way
             if len(matchingStatesList) == 1:
-                matchingCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE zips LIKE ? ORDER BY county_name ASC", "%"+zipcode+"%")
-                alphaCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE state_name = ? ORDER BY county_name ASC", matchingStatesList[0]['state_name'])
+                dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE zips LIKE (%s) ORDER BY county_name ASC""", ["%"+zipcode+"%"])
+                matchingCountiesList = [dict(row) for row in dict_cur.fetchall()]
+                dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) ORDER BY county_name ASC""", [matchingStatesList[0]['state_name']])
+                alphaCountiesList = [dict(row) for row in dict_cur.fetchall()]
             else:
                 # if more than one state matches the zip code, don't bother to populate counties or cities
                 alphaStatesList = matchingStatesList
             # if only one county, populate cities the same way
             if len(matchingCountiesList) == 1:
-                matchingCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE zips LIKE ? ORDER BY city ASC", "%"+zipcode+"%")
-                alphaCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE county_name = ? ORDER BY city ASC", matchingCountiesList[0]['county_name'])
+                dict_cur.execute("SELECT DISTINCT city FROM cities WHERE zips LIKE (%s) ORDER BY city ASC", ["%"+zipcode+"%"])
+                matchingCitiesList = [dict(row) for row in dict_cur.fetchall()]
+                dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE county_name = (%s) ORDER BY city ASC""", [matchingCountiesList[0]['county_name']])
+                alphaCitiesList = [dict(row) for row in dict_cur.fetchall()]
             else:
                 # if more than one county matches the zip code, limit the counties picklist to the matching counties, and don't bother to populate the cities
                 alphaCountiesList = matchingCountiesList
             if len(matchingCitiesList) > 1:
                 # if more than one city matches the zip code, limit the cities picklist to the matching cities
                 alphaCitiesList = matchingCitiesList
+            dict_cur.close()
     elif state:
-        matchingStatesList = cityConnect.execute("SELECT DISTINCT state_name FROM cities WHERE state_name = ?", state)
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT DISTINCT state_name FROM cities WHERE state_name = (%s)""", [state])
+        matchingStatesList = [dict(row) for row in dict_cur.fetchall()]
         if (city and county) or (not city and not county):
             # populate both alpha lists based on state
-            alphaCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE state_name = ? ORDER BY city ASC", state)
-            alphaCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE state_name = ? ORDER BY county_name ASC", state)
+            dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE state_name = (%s) ORDER BY city ASC""", [state])
+            alphaCitiesList = [dict(row) for row in dict_cur.fetchall()]
+            dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) ORDER BY county_name ASC""", [state])
+            alphaCountiesList = [dict(row) for row in dict_cur.fetchall()]
             # for row in alphaCitiesList:
             #     selects4Dict['city'].append(row['city'])
             # for row in alphaCountiesList:
             #     selects4Dict['county'].append(row['county_name'])
             # update matching lists only if we have both city and county
             if (city and county):
-                matchingCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE state_name = ? and county_name = ? and city = ? ORDER BY city ASC", state, county, city)
-                matchingCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE state_name = ? and county_name = ? and city = ? ORDER BY city ASC", state, county, city)
+                dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE state_name = (%s) and county_name = (%s) and city = (%s) ORDER BY city ASC""", [state, county, city])
+                matchingCitiesList = [dict(row) for row in dict_cur.fetchall()]
+                dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) and county_name = (%s) and city = (%s) ORDER BY city ASC""", [state, county, city])
+                matchingCountiesList = [dict(row) for row in dict_cur.fetchall()]
         if city:
             # populate cities based on state, populate counties based on city
-            alphaCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE state_name = ? ORDER BY city ASC", state)
-            alphaCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE city = ? ORDER BY county_name ASC", city)
+            dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE state_name = (%s) ORDER BY city ASC""", [state])
+            alphaCitiesList = [dict(row) for row in dict_cur.fetchall()]
+            dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE city = (%s) ORDER BY county_name ASC""", [city])
+            alphaCountiesList = [dict(row) for row in dict_cur.fetchall()]
             # for row in alphaCitiesList:
             #     selects4Dict['city'].append(row['city'])
             # for row in alphaCountiesList:
             #     selects4Dict['county'].append(row['county_name'])
             # get county matches based on state and city
-            matchingCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE state_name = ? and city = ? ORDER BY county_name ASC", state, city)
+            dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) and city = (%s) ORDER BY county_name ASC""", [state, city])
+            matchingCountiesList = [dict(row) for row in dict_cur.fetchall()]
         if county:
             # populate counties based on state, populate cities based on county, and return
-            alphaCountiesList = cityConnect.execute("SELECT DISTINCT county_name FROM cities WHERE state_name = ? ORDER BY county_name ASC", state)
-            alphaCitiesList = cityConnect.execute("SELECT DISTINCT city FROM cities WHERE county_name = ? ORDER BY city ASC", county)
+            dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) ORDER BY county_name ASC""", [state])
+            alphaCountiesList = [dict(row) for row in dict_cur.fetchall()]
+            dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE county_name = (%s) ORDER BY city ASC""", [county])
+            alphaCitiesList = [dict(row) for row in dict_cur.fetchall()]
             # for row in alphaCitiesList:
             #     selects4Dict['city'].append(row['city'])
             # for row in alphaCountiesList:
             #     selects4Dict['county'].append(row['county_name'])
             # print (f"selects4Dict: {selects4Dict}")
             # return selects4Dict
+        dict_cur.close()
     # else:
     #     # no state
     #     return selects4Dict
@@ -1821,18 +1873,20 @@ def citiesDictBuilder(zipcode,state,city,county):
 
 # select all loved ones, with dict for each one's challenges, from db based on user id
 def selectLovedOnes(userID):
-    lovedOnes = db.execute("""
-    SELECT LovedOnes.id, relationships.relationship, genders.gender, ages.age, challenges.challenge
-    FROM LovedOnes
-    LEFT JOIN relationships on relationships.id = LovedOnes.relationshipID
-    LEFT JOIN genders on genders.id = LovedOnes.genderID
-    LEFT JOIN ages on ages.id = LovedOnes.ageID
-    LEFT JOIN LovedOneToChallenge on LovedOneToChallenge.lovedOneID = LovedOnes.id
-    LEFT JOIN challenges on challenges.id = LovedOneToChallenge.challengeID
-    WHERE userID = ? ORDER BY LovedOnes.id ASC, challenges.id ASC;
-    """, userID)
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
+    SELECT loved_ones.id, relationships.relationship, genders.gender, ages.age, challenges.challenge
+    FROM loved_ones
+    LEFT OUTER JOIN relationships on relationships.id = loved_ones.relationship_id
+    LEFT OUTER JOIN genders on genders.id = loved_ones.gender_id
+    LEFT OUTER JOIN ages on ages.id = loved_ones.age_id
+    LEFT OUTER JOIN loved_one_challenge on loved_one_challenge.loved_one_id = loved_ones.id
+    LEFT OUTER JOIN challenges on challenges.id = loved_one_challenge.challengeID
+    WHERE user_id = (%s) ORDER BY loved_ones.id ASC, challenges.id ASC
+    """, [userID])
+    lovedOnes = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
     # check to see if any loved ones have more than one challenge
-    tempDict = {}
     tempRows = []
     for row in lovedOnes:
         if len(tempRows) > 0:
@@ -1852,7 +1906,6 @@ def selectLovedOnes(userID):
 
 # build array of challenges as needed for each loved one
 def buildChallengeList(lovedOnes):
-    tempDict = {}
     tempRows = []
     for row in lovedOnes:
         if len(tempRows) > 0:
@@ -1870,29 +1923,32 @@ def buildChallengeList(lovedOnes):
             row['challenge'] = row['challenge'].split('!')
     return lovedOnes
 
-# process returned rows for a message thread; get it read for display on page
+# process returned rows for a message thread; get it ready for display on page
 def processMessageThread(threadArrayAll):
     thread1 = []
     tempRows = []
     threadRows = []
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     for userID in threadArrayAll:
         # find rows where the specified user is either a sender or recipient
-        tempRows = db.execute("""
+        dict_cur.execute("""
         SELECT * FROM messages
-        LEFT JOIN MessageToRecipient on messages.id = MessageToRecipient.messageID
-        WHERE (messages.senderID = ? or MessageToRecipient.recipientID = ?)
-        ORDER BY messages.id ASC, MessageToRecipient.recipientID ASC;
-        """, userID, userID)
+        LEFT JOIN message_recipient on messages.id = message_recipient.message_id
+        WHERE (messages.sender_id = (%s) or message_recipient.recipient_id = (%s))
+        ORDER BY messages.id ASC, message_recipient.recipient_id ASC
+        """, [userID, userID])
+        tempRows = [dict(row) for row in dict_cur.fetchall()]
         # print (f"For userID {userID}, tempRows is {tempRows}")
         # thread1.append(tempRows)
         # append each of these returned rows to thread1
         for row in tempRows:
             thread1.append(row)
+    dict_cur.close()
     # we should emerge from the loop with lots of rows that need sorting, deduping, etc.
-    thread2 = sorted(thread1, key = lambda x: (x['id'], x['recipientID']))
+    thread2 = sorted(thread1, key = lambda x: (x['id'], x['recipient_id']))
     # change all recipient IDs to array of ints
     for item in thread2:
-        item['recipientID'] = [item['recipientID']]
+        item['recipient_id'] = [item['recipient_id']]
     # print (f"thread2 is {thread2}")
     thread3 = []
     previousID = 0
@@ -1902,18 +1958,18 @@ def processMessageThread(threadArrayAll):
             # first time for this id
             previousID = item['id']
             thread3.append(item)
-            thread3[len(thread3)-1]['recipientID'].append(item['senderID'])
+            thread3[len(thread3)-1]['recipient_id'].append(item['sender_id'])
         else:
             # not the first for this id
-            thread3[len(thread3)-1]['recipientID'].append(item['recipientID'][0])
+            thread3[len(thread3)-1]['recipient_id'].append(item['recipient_id'][0])
     # dedupe and sort recipient array
     for item in thread3:
-        item['recipientID'] = list(set(item['recipientID']))
-        item['recipientID'].sort()
+        item['recipient_id'] = list(set(item['recipient_id']))
+        item['recipient_id'].sort()
     # print (f"thread3 is {thread3}")
     # create new list with only the messages that match the request args list
     for item in thread3:
-        if item['recipientID'] == threadArrayAll:
+        if item['recipient_id'] == threadArrayAll:
             threadRows.append(item)
     # add displayName and other display items, based on senderID, for each item
     threadRows = messagePrepForDisplay(threadRows, False)
@@ -1927,21 +1983,23 @@ def messagePrepForDisplay(rows,condense):
     userRow = []
     displayName = ""
     profileImage = ""
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     for item in rows:
         allRecipientsRaw = []
         allRecipientsInts = []
         allDisplayNames = []
         # build array of participants in thread other than logged-in user
-        allRecipientsRaw = db.execute("SELECT DISTINCT recipientID FROM MessageToRecipient WHERE messageID = ?", int(item['messageID']))
+        dict_cur.execute("""SELECT DISTINCT recipient_id FROM message_recipient WHERE message_id = (%s)""", [int(item['message_id'])])
+        allRecipientsRaw = [dict(row) for row in dict_cur.fetchall()]
         for recipient in allRecipientsRaw:
-            allRecipientsInts.append(recipient['recipientID'])
-        allRecipientsInts.append(int(item['senderID']))
+            allRecipientsInts.append(recipient['recipient_id'])
+        allRecipientsInts.append(int(item['sender_id']))
         allRecipientsInts.remove(int(session.get("id")))
         allRecipientsInts.sort()
         # print(f"allRecipientsInts = {allRecipientsInts}")
         # build array of displayNames for those recipients
         for recipient in allRecipientsInts:
-            if recipient != int(item['senderID']):
+            if recipient != int(item['sender_id']):
                 recipientRow = getUserRows(recipient)
                 recipientDisplayName = buildDisplayName(recipientRow[0])
                 allDisplayNames.append(recipientDisplayName)
@@ -1956,19 +2014,20 @@ def messagePrepForDisplay(rows,condense):
         item['allRecipientsInts'] = allRecipientsIntsString
         item['allDisplayNames'] = allDisplayNamesString
         # add a flag for unread message we will use later when combining messages by thread
-        if item['read'] == 0:
+        if item['read'] == False:
             item['unreadCount'] = 1
         else:
             item['unreadCount'] = 0
         #  add other stuff for display
-        userRow = getUserRows(item['senderID'])
+        userRow = getUserRows(item['sender_id'])
         displayName = buildDisplayName(userRow[0])
-        profileImage = userRow[0]['profileImage']
+        profileImage = userRow[0]['profile_image']
         item['displayName'] = displayName
         item['profileImage'] = profileImage
-        item['dateTime'] = datetime.fromisoformat(item['dateCreated'])
-        item['dateTimeString'] = buildDateTimeString(item['dateCreated'])
+        item['dateTime'] = datetime.fromisoformat(item['date_created'])
+        item['dateTimeString'] = buildDateTimeString(item['date_created'])
     # print(f"rows = {rows}")
+    dict_cur.close()
     if not condense:
         return rows
     # now we are condensing, so iterate thru rows and copy latest item from each thread into superMessageList and increment unreadCount for each
@@ -1992,108 +2051,122 @@ def messagePrepForDisplay(rows,condense):
 
 #  testing ajax calls; we can delete this when we go to production
 def ajaxtest_sub(state_name):
-        cityConnect = SQL("sqlite:///uscities.db")
-        countyList = cityConnect.execute('SELECT DISTINCT county_name FROM cities WHERE state_name = ?', state_name)
-        return jsonify(countyList)
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s)""", [state_name])
+    countyList = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
+    return jsonify(countyList)
 
 def cleanThisHTML(rawHTML):
         cleanHTML = bleach.clean(rawHTML, tags=['a', 'b', 'blockquote', 'em', 'i', 'img','li', 'ol', 'strong', 'ul'], attributes={'a': ['href', 'title'], 'abbr': ['title'], 'acronym': ['title']}, styles=[], protocols=['http', 'https', 'mailto'], strip=False, strip_comments=True)
         return cleanHTML
 
 def getArticleRowsForDisplay(articleID):
-    articleRows = db.execute("""
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
         SELECT
         articles.id,
-        articles.senderID,
+        articles.sender_id,
         articles.url,
         articles.title,
         articles.description,
-        articles.dateCreated,
-        articles.datePublished,
-        articles.ogImage,
-        users.firstName,
-        users.lastName,
+        articles.date_created,
+        articles.date_published,
+        articles.og_image,
+        users.first_name,
+        users.last_name,
         users.username,
-        users.profileImage,
-        users.displayNameOption,
-        group_concat(DISTINCT challenges.id) AS challengeIDs,
-        group_concat(DISTINCT challenges.challenge) AS challenges,
-        group_concat(DISTINCT ages.id) AS ageIDs,
-        group_concat(DISTINCT ages.age) AS ages,
-        group_concat(DISTINCT genders.id) AS genderIDs,
-        group_concat (DISTINCT genders.gender) AS genders
+        users.profile_image,
+        users.display_name_option,
+        string_agg(DISTINCT challenges.id::text) AS challenge_ids,
+        string_agg(DISTINCT challenges.challenge::text) AS challenges,
+        string_agg(DISTINCT ages.id::text) AS age_ids,
+        string_agg(DISTINCT ages.age::text) AS ages,
+        string_agg(DISTINCT genders.id::text) AS gender_ids,
+        string_agg(DISTINCT genders.gender::text) AS genders
         FROM articles
-        LEFT JOIN ArticleToChallenge on articles.id = ArticleToChallenge.articleID
-        LEFT JOIN challenges on challenges.id = ArticleToChallenge.challengeID
-        LEFT JOIN ArticleToAge on articles.id = ArticleToAge.articleID
-        LEFT JOIN ages on ages.id = ArticleToAge.ageID
-        LEFT JOIN ArticleToGender on articles.id = ArticleToGender.articleID
-        LEFT JOIN genders on genders.id = ArticleToGender.genderID
-        LEFT JOIN users on users.id = articles.senderID
-        WHERE articles.id = ?
-    """, int(articleID))
+        LEFT OUTER JOIN article_challenge on articles.id = article_challenge.article_id
+        LEFT OUTER JOIN challenges on challenges.id = article_challenge.challenge_id
+        LEFT OUTER JOIN article_age on articles.id = article_age.article_id
+        LEFT OUTER JOIN ages on ages.id = article_age.age_id
+        LEFT OUTER JOIN article_gender on articles.id = article_gender.article_id
+        LEFT OUTER JOIN genders on genders.id = article_gender.gender_id
+        LEFT OUTER JOIN users on users.id = articles.sender_id
+        WHERE articles.id = (%s)
+    """, [int(articleID)])
+    articleRows = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
     articleRows[0]['displayName'] = buildDisplayName(articleRows[0])
-    articleRows[0]['dateTimeString'] = buildDateTimeString(articleRows[0]['dateCreated'])
-    articleRows[0]['publishedDateTimeString'] = buildDateTimeString(articleRows[0]['datePublished'])
+    articleRows[0]['dateTimeString'] = buildDateTimeString(articleRows[0]['date_created'])
+    articleRows[0]['publishedDateTimeString'] = buildDateTimeString(articleRows[0]['date_published'])
     return articleRows
 
 def getArticleCommentRowsForDisplay(articleID):
-    articleCommentRows = db.execute("""
-        SELECT comments.id, comments.text, comments.senderID, comments.dateCreated, users.firstName, users.lastName, users.username, users.displayNameOption, users.profileImage
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
+        SELECT comments.id, comments.text, comments.sender_id, comments.date_created, users.first_name, users.lastName, users.username, users.display_name_option, users.profile_image
         FROM comments
-        LEFT JOIN users on comments.senderID = users.id
-        WHERE comments.articleID = ?
-        ORDER BY comments.dateCreated ASC
-    """, int(articleID))
+        LEFT OUTER JOIN users on comments.sender_id = users.id
+        WHERE comments.article_id = (%s)
+        ORDER BY comments.date_created ASC
+    """, [int(articleID)])
+    articleCommentRows = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
     for row in articleCommentRows:
         row['displayName'] = buildDisplayName(row)
-        row['dateTimeString'] = buildDateTimeString(row['dateCreated'])
+        row['dateTimeString'] = buildDateTimeString(row['date_created'])
     return articleCommentRows
 
 def getDiscussionRowsForDisplay(discussionID):
-    discussionRows = db.execute("""
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
         SELECT
         discussions.id,
-        discussions.senderID,
+        discussions.sender_id,
         discussions.subject,
         discussions.text,
-        discussions.dateCreated,
-        users.firstName,
-        users.lastName,
+        discussions.date_created,
+        users.first_name,
+        users.last_name,
         users.username,
-        users.profileImage,
-        users.displayNameOption,
-        group_concat(DISTINCT challenges.id) AS challengeIDs,
-        group_concat(DISTINCT challenges.challenge) AS challenges,
-        group_concat(DISTINCT ages.id) AS ageIDs,
-        group_concat(DISTINCT ages.age) AS ages,
-        group_concat(DISTINCT genders.id) AS genderIDs,
-        group_concat (DISTINCT genders.gender) AS genders
+        users.profile_image,
+        users.display_name_option,
+        string_agg(DISTINCT challenges.id::text) AS challenge_ids,
+        string_agg(DISTINCT challenges.challenge::text) AS challenges,
+        string_agg(DISTINCT ages.id::text) AS age_ids,
+        string_agg(DISTINCT ages.age::text) AS ages,
+        string_agg(DISTINCT genders.id::text) AS gender_ids,
+        string_agg(DISTINCT genders.gender::text) AS genders
         FROM discussions
-        LEFT JOIN DiscussionToChallenge on discussions.id = DiscussionToChallenge.discussionID
-        LEFT JOIN challenges on challenges.id = DiscussionToChallenge.challengeID
-        LEFT JOIN DiscussionToAge on discussions.id = DiscussionToAge.discussionID
-        LEFT JOIN ages on ages.id = DiscussionToAge.ageID
-        LEFT JOIN DiscussionToGender on discussions.id = DiscussionToGender.discussionID
-        LEFT JOIN genders on genders.id = DiscussionToGender.genderID
-        LEFT JOIN users on users.id = discussions.senderID
-        WHERE discussions.id = ?
-    """, int(discussionID))
+        LEFT JOIN discussion_challenge on discussions.id = discussion_challenge.discussion_id
+        LEFT JOIN challenges on challenges.id = discussion_challenge.challenge_id
+        LEFT JOIN discussion_age on discussions.id = discussion_age.discussion_id
+        LEFT JOIN ages on ages.id = discussion_age.age_id
+        LEFT JOIN discussion_gender on discussions.id = discussion_gender.discussion_id
+        LEFT JOIN genders on genders.id = discussion_gender.gender_id
+        LEFT JOIN users on users.id = discussions.sender_id
+        WHERE discussions.id = (%s)
+    """, [int(discussionID)])
+    discussionRows = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
     discussionRows[0]['displayName'] = buildDisplayName(discussionRows[0])
-    discussionRows[0]['dateTimeString'] = buildDateTimeString(discussionRows[0]['dateCreated'])
+    discussionRows[0]['dateTimeString'] = buildDateTimeString(discussionRows[0]['date_created'])
     return discussionRows
 
 def getDiscussionCommentRowsForDisplay(discussionID):
-    discussionCommentRows = db.execute("""
-        SELECT comments.id, comments.text, comments.senderID, comments.dateCreated, users.firstName, users.lastName, users.username, users.displayNameOption, users.profileImage
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
+        SELECT comments.id, comments.text, comments.sender_id, comments.date_created, users.first_name, users.last_name, users.username, users.display_name_option, users.profile_image
         FROM comments
-        LEFT JOIN users on comments.senderID = users.id
-        WHERE comments.discussionID = ?
-        ORDER BY comments.dateCreated ASC
-    """, int(discussionID))
+        LEFT OUTER JOIN users on comments.sender_id = users.id
+        WHERE comments.discussion_id = (%s)
+        ORDER BY comments.date_created ASC
+    """, [int(discussionID)])
+    discussionCommentRows = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
     for row in discussionCommentRows:
         row['displayName'] = buildDisplayName(row)
-        row['dateTimeString'] = buildDateTimeString(row['dateCreated'])
+        row['dateTimeString'] = buildDateTimeString(row['date_created'])
     return discussionCommentRows
 
 def getTextContentFromHTML(HTMLstring):

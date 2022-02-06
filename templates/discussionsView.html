@@ -36,7 +36,7 @@
                 {% endif %}
             </div>
             <div class="col-lg-5">
-                {% if discussionRow['ageIDs'] or discussionRow['challengeIDs'] or discussionRow['genderIDs'] %}
+                {% if discussionRow['age_ids'] or discussionRow['challenge_ids'] or discussionRow['gender_ids'] %}
                     <p>
                     <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target='{{ "#aimedAtCollapse" + discussionRow['id']|string }}' aria-expanded="false" aria-controls='{{ "#aimedAtCollapse" + discussionRow['id']|string }}'>
                         aimed at:&nbsp;&nbsp;<i class="fas fa-caret-down"></i>
