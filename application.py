@@ -818,7 +818,7 @@ def emailVerifyReminder():
     if session.get("id") is None:
         return redirect("/signin")
     else:
-        if session.get("emailConfirmed") == 0:
+        if session.get("emailConfirmed") == False:
             emailAddress = session.get("email")
             userDict = buildUserDict()
             return render_template("emailVerifyReminder.html", userDict = userDict, emailAddress = emailAddress)
@@ -849,23 +849,24 @@ def emailVerify(token):
         userDict = buildUserDict()
         return errorView(userDict, "Token has expired", "Your email verification token has expired.", "Try again", "emailReverify")
     # email was verified, so retrieve user record
-    rows = db.execute("SELECT * FROM users WHERE email = ?", email)
-    # update user record so emailConfirmed = 1
-    db.execute("BEGIN TRANSACTION")
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    # update user record so emailConfirmed = True
+    dict_cur.execute("""BEGIN""")
     try:
-        db.execute("UPDATE users SET emailConfirmed = 1 WHERE email = ?", email)
+        dict_cur.execute("""UPDATE users SET email_confirmed = TRUE WHERE email = (%s)""", [email])
     except:
-        db.execute("ROLLBACK")
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    dict_cur.execute("COMMIT")
     # if not already logged in, log them in
     if session.get("id") is None:
-        rows = db.execute("SELECT * FROM users WHERE email = ?", email)
+        dict_cur.execute("""SELECT * FROM users WHERE email = (%s)""", [email])
+        rows = [dict(row) for row in dict_cur.fetchall()]
         setSessionValues(rows)
-        session["emailConfirmed"] = rows[0]["emailConfirmed"]
+        session["emailConfirmed"] = rows[0]["email_confirmed"]
     else:  # if already logged in, just update the session key for emailConfirmed
-        session["emailConfirmed"] = 1
-    # send them to home page
+        session["emailConfirmed"] = True
+    # send them to first page of profile sequence
     flash("Thanks, " + session["username"] + ", your email has been verified.", flashStyling("success"))
     return redirect("/profile1")
 
@@ -1422,31 +1423,37 @@ def register():
             return redirect("/profile")
     if request.method == "POST":
         # ensure username does NOT exist in db
-        if len(db.execute("SELECT * FROM users WHERE username = ?", request.form.get("username"))) > 0:
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT * FROM users WHERE username = (%s)""", [request.form.get("username")])
+        checkUsernameRow = [dict(row) for row in dict_cur.fetchall()]
+        if len(checkUsernameRow) > 0:
             flash("That username is already being used; please choose another.", flashStyling("danger"))
             return redirect("/register")
         # ensure email does NOT exist in db
-        if len(db.execute("SELECT * FROM users WHERE email = ?", request.form.get("email"))) > 0:
+        dict_cur.execute("""SELECT * FROM users WHERE email = (%s)""", [request.form.get("email")])
+        checkEmailRow = [dict(row) for row in dict_cur.fetchall()]
+        if len(checkEmailRow) > 0:
             flash("That email address is already being used. You can use another, or use the \"Forgot / Reset password\" link at the bottom of this form.", flashStyling("danger"))
             return redirect("/register")
         # hash the pwd1 to create a text variable
         pw_hash = generate_password_hash(request.form.get("password"), method='pbkdf2:sha256', salt_length=8)
         # write a new row to the users db with username and hash
-        db.execute("BEGIN TRANSACTION")
+        dict_cur.execute("""BEGIN""")
         try:
-            db.execute("INSERT INTO users (username, email, pwHash) VALUES(?,?,?)", request.form.get("username"), request.form.get("email"), pw_hash)
+            dict_cur.execute("""INSERT INTO users (username, email, pw_hash) VALUES((%s),(%s),(%s))""", [request.form.get("username"), request.form.get("email"), pw_hash])
         except:
-            db.execute("ROLLBACK")
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        dict_cur.execute("""COMMIT""")
         # select this new user from the db
-        rows = db.execute("SELECT * FROM users WHERE username = ?", request.form.get("username"))
+        dict_cur.execute("""SELECT * FROM users WHERE username = (%s)""", [request.form.get("username")])
+        rows = [dict(row) for row in dict_cur.fetchall()]
+        dict_cur.close()
         # go ahead and log the user in
         setSessionValues(rows)
         #call function to generate token and send email for verification
         emailAddress = request.form.get("email")
         sendVerificationEmail(emailAddress)
-
         flash("Welcome, " + session["username"] + "! You are registered.", flashStyling("success"))
         return redirect("/emailVerify1")
 

@@ -23,7 +23,7 @@ def login_required(f):
 def email_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if session.get("id") is not None and session.get("emailConfirmed") == 0:
+        if session.get("id") is not None and session.get("emailConfirmed") == False:
             return redirect("/emailVerifyReminder")
         return f(*args, **kwargs)
     return decorated_function
