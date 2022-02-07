@@ -6,7 +6,7 @@ displayNameOptionFirstLast = document.getElementById("displayNameOptionFirstLast
 fileElem = document.getElementById("fileElem"),
 thumbnailDiv = document.getElementById("thumbnailDiv"),
 dbThumbnailImage = document.getElementById("thumbnailImage"),
-userOrCancel = document.getElementById("useOrCancel"),
+useOrCancel = document.getElementById("useOrCancel"),
 fileSelectDiv = document.getElementById("fileSelectDiv"),
 fileSelectUse = document.getElementById("fileSelectUse"),
 fileSelectCancel = document.getElementById("fileSelectCancel"),
@@ -24,6 +24,11 @@ for (var i = 0; i < radios.length; i++) {
 
 usernameInput.addEventListener("change", function(e) {
   updateThumbnailFigcaption();
+  if (usernameInput.value==""){
+    alert("Username is required. Please enter a username.");
+    usernameInput.click();
+    return
+  }
 }, false);
 
 let nameInputs = [firstNameInput, lastNameInput];
@@ -134,7 +139,7 @@ fileSelectCancel.addEventListener("click", function(e) {
   fileSelectDiv.classList.add("d-flex");
   fileSelectDiv.classList.remove("d-none");
   useOrCancel.classList.add("d-none");
-  userOrCancel.classList.remove("d-flex");
+  useOrCancel.classList.remove("d-flex");
   // reset the file select element to empty
   document.getElementById("fileElem").value = "";
   e.preventDefault(); // prevent navigation to "#"
@@ -142,6 +147,11 @@ fileSelectCancel.addEventListener("click", function(e) {
 
 profile2SubmitButton.addEventListener("click", function(e) {
   // code goes here to build URL string and submit the form data
+  if (usernameInput.value==""){
+    alert("Username is required. Please enter a username.");
+    usernameInput.click();
+    return
+  }
   let displayNameOption = 0;
   if (profileForm2.displayNameOptionUsername.checked){
     displayNameOption = 1;
@@ -149,7 +159,7 @@ profile2SubmitButton.addEventListener("click", function(e) {
   else {
     displayNameOption= 2;
   }
-  let argstring = `username=${profileForm2.username.value}&firstName=${profileForm2.first_name.value}&lastName=${profileForm2.last_name.value}&displayNameOption=${displayNameOption}`;
+  let argstring = `username=${profileForm2.username.value}&first_name=${profileForm2.first_name.value}&last_name=${profileForm2.last_name.value}&display_name_option=${displayNameOption}`;
   profileForm2.setAttribute("action","/profile2?" + argstring);
   profileForm2.submit();
 }, false);

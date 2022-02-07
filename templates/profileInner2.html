@@ -5,14 +5,14 @@
                 <!--<h5>Your name</h5>-->
                 <label for="username">Username</label>
                 <div class="mb-3">
-                  <input type="text" class="form-control" id="username" name="username" value="{{ userRows[0]["username"] }}" required>
+                  <input type="text" class="form-control" id="username" name="username" value="{{ userRows[0]['username'] }}" required>
                 </div>
                 <label for="firstNameInput">First name <em>(optional)</em></label>
                 <div class="mb-3">
                     {% if not userRows[0]["first_name"] %}
                     <input type="text" class="form-control" id="firstNameInput" name="first_name">
                     {% else %}
-                    <input type="text" class="form-control" id="firstNameInput" name="first_name" value={{ userRows[0]["first_name"] }}>
+                    <input type="text" class="form-control" id="firstNameInput" name="first_name" value="{{ userRows[0]['first_name'] }}">
                     {% endif %}
                 </div>
                 <label for="lastNameInput">Last name or initial <em>(optional)</em></label>
@@ -20,7 +20,7 @@
                     {% if not userRows[0]["last_name"] %}
                     <input type="text" class="form-control" id="lastNameInput" name="last_name">
                     {% else %}
-                    <input type="text" class="form-control" id="lastNameInput" name="last_name" value={{ userRows[0]["last_name"] }}>
+                    <input type="text" class="form-control" id="lastNameInput" name="last_name" value="{{ userRows[0]['last_name'] }}">
                     {% endif %}
                 </div>
 
@@ -45,7 +45,7 @@
                 <h5>How do you want to appear?</h5>
                 <div id="thumbnailDiv" class="d-flex justify-content-center">
                     <figure id = "thumbnailFigure">
-                        <img id = "thumbnailImage" alt="your profile image" src={{ "/static/avatars/" + userRows[0]['profileImage'] }}>
+                        <img id = "thumbnailImage" alt="your profile image" src={{ "/static/avatars/" + userRows[0]['profile_image'] }}>
                         <figcaption id = "thumbnailFigcaption">{{ userDict["displayName"] }}</figcaption>
                     </figure>
                 </div>

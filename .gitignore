@@ -1,3 +1,5 @@
 *.env
 *.csv
 mySupport-env/
+__pycache__/
+*.pyc

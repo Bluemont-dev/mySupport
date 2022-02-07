@@ -115,7 +115,7 @@ conn.autocommit = True
 def index():
     # call a function that checks for authentication and sends correct object to the template
     userDict = buildUserDict()
-    retrieveLimit = 5
+    retrieveLimit = 50
     allDiscussionsList = []
     commentCount = 0
     # # retrieve  recent discussions from db
@@ -170,9 +170,8 @@ def index():
         allArticlesList.append(articleRow[0])
     # peopleRows = db.execute("SELECT id, firstName, lastName, username, displayNameOption, dateJoined, city, county, state, profileImage FROM users ORDER BY dateJoined DESC LIMIT ?", retrieveLimit)
     dict_cur.execute("""SELECT id, first_name, last_name, username, display_name_option, date_joined, city, county, state, profile_image FROM users ORDER BY date_joined DESC LIMIT (%s)""",[retrieveLimit])
-    peopleRows = dict_cur.fetchall()
+    peopleRows = [dict(row) for row in dict_cur.fetchall()]
     dict_cur.close()
-    peopleRows = [dict(row) for row in peopleRows]
     print(peopleRows)
     for row in peopleRows:
         personDisplayName = buildDisplayName(row)
@@ -1177,7 +1176,7 @@ def profile2():
                 abort(500)
             dict_cur.execute("""COMMIT""")
         # compare submitted lastName to existing. If different, update lastName in db record
-        if request.args.get("lastName") != rows[0]["lastName"]:
+        if request.args.get("last_name") != rows[0]["last_name"]:
             dict_cur.execute("""BEGIN""")
             try:
                 dict_cur.execute("""UPDATE users SET last_name = (%s) WHERE id = (%s)""", [request.args.get("last_name"), session.get("id")])
@@ -1570,7 +1569,6 @@ def buildUserDict():
         dict_cur.execute("""SELECT * FROM users WHERE id = (%s)""", [session.get('id')])
         rows = dict_cur.fetchall()
         rows = [dict(row) for row in rows]
-
         displayNameMaxLength = 20
         if rows[0]["display_name_option"] == 1:
             displayName = rows[0]["username"]
@@ -1615,6 +1613,7 @@ def buildDisplayName(userRow):
     else:
         firstName = userRow["first_name"]
         lastName = userRow["last_name"]
+        print(f"Line 1618 userRow first name is {userRow['first_name']}.")
         if len(firstName) + len(lastName) + 1 > displayNameMaxLength:
             if len(firstName) < displayNameMaxLength - 2:
                 #this means we could fit the entire first name w/ last initial
@@ -1651,7 +1650,7 @@ def setSessionValues(rows):
 def getUserRows(id):
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     dict_cur.execute("""SELECT * FROM users WHERE id = (%s)""", [id])
-    rows = dict_cur.fetchone()
+    rows = dict_cur.fetchall()
     dict_cur.close()
     rows = [dict(row) for row in rows]
     return rows
@@ -1710,7 +1709,7 @@ def dbSimpleDictBuilder(*args):
         orderType = argList[2]
         # print(f"SELECT * FROM {table} ORDER BY {orderBy} {orderType}")
         # rows = db.execute("SELECT * FROM ? ORDER BY ? ?", table, orderBy, orderType)
-        dbExecuteString = '"""SELECT * FROM ' + table + ' ORDER BY ' + orderBy + ' ' + orderType + '"""'
+        dbExecuteString = 'SELECT * FROM ' + table + ' ORDER BY ' + orderBy + ' ' + orderType
         dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         dict_cur.execute(dbExecuteString)
         rows = dict_cur.fetchall()
@@ -1823,7 +1822,7 @@ def citiesDictBuilder(zipcode,state,city,county):
             if (city and county):
                 dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE state_name = (%s) and county_name = (%s) and city = (%s) ORDER BY city ASC""", [state, county, city])
                 matchingCitiesList = [dict(row) for row in dict_cur.fetchall()]
-                dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) and county_name = (%s) and city = (%s) ORDER BY city ASC""", [state, county, city])
+                dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) and county_name = (%s) and city = (%s) ORDER BY county_name ASC""", [state, county, city])
                 matchingCountiesList = [dict(row) for row in dict_cur.fetchall()]
         if city:
             # populate cities based on state, populate counties based on city
@@ -1885,7 +1884,7 @@ def selectLovedOnes(userID):
     LEFT OUTER JOIN genders on genders.id = loved_ones.gender_id
     LEFT OUTER JOIN ages on ages.id = loved_ones.age_id
     LEFT OUTER JOIN loved_one_challenge on loved_one_challenge.loved_one_id = loved_ones.id
-    LEFT OUTER JOIN challenges on challenges.id = loved_one_challenge.challengeID
+    LEFT OUTER JOIN challenges on challenges.id = loved_one_challenge.challenge_id
     WHERE user_id = (%s) ORDER BY loved_ones.id ASC, challenges.id ASC
     """, [userID])
     lovedOnes = [dict(row) for row in dict_cur.fetchall()]
