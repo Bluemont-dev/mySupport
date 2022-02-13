@@ -5,7 +5,8 @@ import copy
 import bleach
 import psycopg2
 import psycopg2.extras
-from psycopg2 import sql
+from psycopg2 import sql, errors
+from psycopg2.extensions import AsIs
 import urllib.parse
 from urllib.parse import urlparse
 from urllib.request import urlopen
@@ -1210,37 +1211,45 @@ def profile3():
         return render_template("profileSequence3.html", userDict = userDict, userRows = userRows, formSource = "profile3", editID = "", lovedOnes = lovedOnes, selects3Dict = selects3Dict)
     else:
         # we have POST request
-        newRelationship = request.form.get('relationship')
-        newChallengeList = request.form.getlist('challenge')
         newAge = request.form.get('age')
+        newChallengeList = request.form.getlist('challenge')
         newGender = request.form.get('gender')
+        newRelationship = request.form.get('relationship')
+        passedDict = {}
+        if newAge != '':
+           passedDict['age_id'] = int(newAge)
+        if newGender != '':
+            passedDict['gender_id'] = int(newGender)
+        if newRelationship != '':
+            passedDict['relationship_id'] = int(newRelationship)
+        passedDict['user_id'] = session.get('id')
+        # print(f"Passed dictionary is {passedDict}")
+        insert_flds = [fld_name for fld_name in passedDict.keys()]
+        # print(f"Insert fields: {insert_flds}")
+        insert_str = sql.SQL("INSERT INTO loved_ones ({}) VALUES ({}) RETURNING id").format(
+        sql.SQL(",").join(map(sql.Identifier, insert_flds)),
+        sql.SQL(",").join(map(sql.Placeholder, insert_flds)))
         nextURLs = getProfileNextURLs(request.form.get("formSource3"))
-        db.execute("BEGIN TRANSACTION")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
         try:
-            # create new LovedOnes row with only the userID to start
-            newID = db.execute("INSERT INTO LovedOnes (userID) VALUES (?)", session.get("id"))
-            # update db record with form values
-            if newRelationship:
-                db.execute("UPDATE LovedOnes SET relationshipID = ? WHERE id = ?", newRelationship, newID)
-            else:
-                db.execute("UPDATE LovedOnes SET relationshipID = null WHERE id = ?", newID)
-            if newAge:
-                db.execute("UPDATE LovedOnes SET ageID = ? WHERE id = ?", newAge, newID)
-            else:
-                db.execute("UPDATE LovedOnes SET ageID = null WHERE id = ?", newID)
-            if newGender:
-                db.execute("UPDATE LovedOnes SET genderID = ? WHERE id = ?", newGender, newID)
-            else:
-                db.execute("UPDATE LovedOnes SET genderID = null WHERE id = ?", newID)
+            # create new LovedOnes row
+            dict_cur.execute(insert_str,passedDict)
+            newID = [dict(row) for row in dict_cur.fetchall()]
+            newID = newID[0]['id']
             # remove any and all challenges for this LovedOne in LovedOneToChallenge, then insert new ones from the form's array
-            db.execute("DELETE FROM LovedOneToChallenge WHERE lovedOneID = ?", newID)
+            dict_cur.execute("""DELETE FROM loved_one_challenge WHERE loved_one_id = (%s)""", [newID])
             if len(newChallengeList) > 0:
                 for challenge in newChallengeList:
-                    db.execute("INSERT INTO LovedOneToChallenge (lovedOneID, challengeID) VALUES (?,?)", newID, challenge)
-        except:
-            db.execute("ROLLBACK")
+                    dict_cur.execute("""INSERT INTO loved_one_challenge (loved_one_id, challenge_id) VALUES ((%s),(%s))""", [newID, challenge])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         return redirect(nextURLs['successURL']) # or conditional destination, based on formSource
 
 @app.route("/profile3/edit/<editID>")
@@ -1249,8 +1258,10 @@ def profile3():
 def profile3edit(editID):
     if request.method == "GET":
         # make sure the editID belongs to the logged-in user, so people can't edit other people's loved ones!
-        lovedOneOwnerRow = db.execute("SELECT userID FROM LovedOnes WHERE id = ?", editID)
-        lovedOneOwnerID = lovedOneOwnerRow[0]['userID']
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT user_id FROM loved_ones WHERE id = (%s)""", [editID])
+        lovedOneOwnerRow = [dict(row) for row in dict_cur.fetchall()]
+        lovedOneOwnerID = lovedOneOwnerRow[0]['user_id']
         if session.get("id") != lovedOneOwnerID:
             flash("That item is not yours to edit.", flashStyling("danger"))
             return redirect("/")
@@ -1258,16 +1269,18 @@ def profile3edit(editID):
             # good to go
             userDict = buildUserDict()
             userRows = getUserRows(session.get("id"))
-            editRow = db.execute("""
-            SELECT LovedOnes.id, relationships.relationship, genders.gender, ages.age, challenges.challenge
-            FROM LovedOnes
-            LEFT JOIN relationships on relationships.id = LovedOnes.relationshipID
-            LEFT JOIN genders on genders.id = LovedOnes.genderID
-            LEFT JOIN ages on ages.id = LovedOnes.ageID
-            LEFT JOIN LovedOneToChallenge on LovedOneToChallenge.lovedOneID = LovedOnes.id
-            LEFT JOIN challenges on challenges.id = LovedOneToChallenge.challengeID
-            WHERE LovedOnes.id = ? ORDER BY LovedOnes.id ASC, challenges.id ASC;
-            """, editID)
+            dict_cur.execute("""
+            SELECT loved_ones.id, relationships.relationship, genders.gender, ages.age, challenges.challenge
+            FROM loved_ones
+            LEFT OUTER JOIN relationships on relationships.id = loved_ones.relationship_id
+            LEFT OUTER JOIN genders on genders.id = loved_ones.gender_id
+            LEFT OUTER JOIN ages on ages.id = loved_ones.age_id
+            LEFT OUTER JOIN loved_one_challenge on loved_one_challenge.loved_one_id = loved_ones.id
+            LEFT OUTER JOIN challenges on challenges.id = loved_one_challenge.challenge_id
+            WHERE loved_ones.id = (%s) ORDER BY loved_ones.id ASC, challenges.id ASC;
+            """, [editID])
+            editRow = [dict(row) for row in dict_cur.fetchall()]
+            dict_cur.close()
             editRow = buildChallengeList(editRow)
             return jsonify(editRow)
 
@@ -1275,40 +1288,56 @@ def profile3edit(editID):
 @login_required
 @email_required
 def profile3update(editID):
-    if checkOwnership('LovedOnes', editID):
+    if checkOwnership('loved_ones', editID):
         # we can update this item
         newRelationship = request.form.get('relationship')
         newChallengeList = request.form.getlist('challenge')
         newAge = request.form.get('age')
         newGender = request.form.get('gender')
         nextURLs = getProfileNextURLs(request.form.get("formSource3"))
-
-        # retrieve this LovedOneID from the db
-        lovedOneRow = db.execute("SELECT * FROM LovedOnes WHERE id = ?", int(editID))
-        db.execute("BEGIN TRANSACTION")
+        passedDict = {}
+        if newAge != '':
+           passedDict['age_id'] = int(newAge)
+        if newGender != '':
+            passedDict['gender_id'] = int(newGender)
+        if newRelationship != '':
+            passedDict['relationship_id'] = int(newRelationship)
+        passedDict['user_id'] = session.get('id')
+        # print(f"Passed dictionary is {passedDict}")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        keysList = list(passedDict.keys())
+        keysString = ",".join(keysList)
+        valuesList = list(passedDict.values())
+        valuesString = ""
+        for i in range(len(valuesList)):
+            if type(valuesList[i]) == str:
+                valuesString += "'" + valuesList[i] + "'"
+            else:
+                valuesString += str(valuesList[i])
+            if i < len(valuesList)-1:
+                valuesString += ","
+        # print(f"keysString is {keysString} and valuesString is {valuesString}")
+        if len(passedDict.keys()) > 1:
+            update_str = sql.SQL("UPDATE loved_ones SET (%s) = (%s) WHERE id = %s")
+        else:
+            update_str = sql.SQL("UPDATE loved_ones SET %s = %s WHERE id = %s")
+        dict_cur.execute("""BEGIN""")
         try:
-            # update db record with form values
-            if newRelationship:
-                db.execute("UPDATE LovedOnes SET relationshipID = ? WHERE id = ?", newRelationship, editID)
-            else:
-                db.execute("UPDATE LovedOnes SET relationshipID = null WHERE id = ?", editID)
-            if newAge:
-                db.execute("UPDATE LovedOnes SET ageID = ? WHERE id = ?", newAge, editID)
-            else:
-                db.execute("UPDATE LovedOnes SET ageID = null WHERE id = ?", editID)
-            if newGender:
-                db.execute("UPDATE LovedOnes SET genderID = ? WHERE id = ?", newGender, editID)
-            else:
-                db.execute("UPDATE LovedOnes SET genderID = null WHERE id = ?", editID)
+            # update this LovedOnes row
+            dict_cur.execute(update_str, [AsIs(keysString),AsIs(valuesString),editID])
             # remove any and all challenges for this LovedOne in LovedOneToChallenge, then insert new ones from the form's array
-            db.execute("DELETE FROM LovedOneToChallenge WHERE lovedOneID = ?", editID)
+            dict_cur.execute("""DELETE FROM loved_one_challenge WHERE loved_one_id = (%s)""", [editID])
             if len(newChallengeList) > 0:
                 for challenge in newChallengeList:
-                    db.execute("INSERT INTO LovedOneToChallenge (lovedOneID, challengeID) VALUES (?,?)", editID, challenge)
-        except:
-            db.execute("ROLLBACK")
+                    dict_cur.execute("""INSERT INTO loved_one_challenge (loved_one_id, challenge_id) VALUES ((%s),(%s))""", [editID, challenge])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         return redirect(nextURLs['successURL']) # or conditional destination, based on formSource
     else:
         flash("You are not authorized to edit this content.", flashStyling("warning"))
@@ -1318,17 +1347,31 @@ def profile3update(editID):
 @login_required
 @email_required
 def profile3delete(editID,formSource):
-    if checkOwnership('LovedOnes', editID):
+    if checkOwnership('loved_ones', editID):
         # we can delete this item
         nextURLs = getProfileNextURLs(formSource)
-        db.execute("BEGIN TRANSACTION")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
-            # delete this LovedOneID from the db; deletion will cascade to LovedOneToChallenge
-            db.execute("DELETE FROM LovedOnes WHERE id = ?", editID)
-        except:
-            db.execute("ROLLBACK")
+            dict_cur.execute("""DELETE FROM loved_ones WHERE id = (%s)""", [editID])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
+
+
+
+        # db.execute("BEGIN TRANSACTION")
+        # try:
+        #     # delete this LovedOneID from the db; deletion will cascade to LovedOneToChallenge
+        #     db.execute("DELETE FROM LovedOnes WHERE id = ?", editID)
+        # except:
+        #     db.execute("ROLLBACK")
+        #     abort(500)
+        # db.execute("COMMIT")
         # we will proceed to the "try again" URL because we want to stay on profile3 after a deletion
         return redirect(nextURLs['tryAgainURL']) # or conditional destination, based on formSource
     else:
@@ -1401,15 +1444,15 @@ def profile5():
     userDict = buildUserDict()
     return render_template("profileSequence5.html", userDict = userDict)
 
-@app.route("/ajaxtest")
-def ajaxtext():
-    if request.method == "GET":
-        # myState = request.args.get('state')
-        # countyList = ajaxtest_sub(myState)
-        # return countyList
-        cityConnect = SQL("sqlite:///uscities.db")
-        countyList = cityConnect.execute('SELECT * FROM cities WHERE ?', 'city = Union Springs')
-        return jsonify(countyList)
+# @app.route("/ajaxtest")
+# def ajaxtext():
+#     if request.method == "GET":
+#         # myState = request.args.get('state')
+#         # countyList = ajaxtest_sub(myState)
+#         # return countyList
+#         cityConnect = SQL("sqlite:///uscities.db")
+#         countyList = cityConnect.execute('SELECT * FROM cities WHERE ?', 'city = Union Springs')
+#         return jsonify(countyList)
 
 
 @app.route("/register", methods = ["GET", "POST"])
@@ -1620,7 +1663,6 @@ def buildDisplayName(userRow):
     else:
         firstName = userRow["first_name"]
         lastName = userRow["last_name"]
-        print(f"Line 1618 userRow first name is {userRow['first_name']}.")
         if len(firstName) + len(lastName) + 1 > displayNameMaxLength:
             if len(firstName) < displayNameMaxLength - 2:
                 #this means we could fit the entire first name w/ last initial
@@ -1675,8 +1717,8 @@ def validate_image(stream):
 def getProfileNextURLs(formSource):
     if formSource == "profile":
         nextURLs = {
-            'successURL':'profile',
-            'tryAgainURL':'profile'
+            'successURL':'/profile',
+            'tryAgainURL':'/profile'
         }
     else:
         ProfileSequenceNumber = int(formSource[-1])
@@ -1695,8 +1737,8 @@ def getProfileNextURLs(formSource):
 # make sure an item to be edited or deleted belongs to the logged-in user, so people can't edit other people's stuff via URL args or other mayhem
 def checkOwnership(tableName, tableRowID):
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    dict_cur.execute("""SELECT user_id FROM (%s) WHERE id = (%s)""", [tableName, tableRowID])
-    ownerRow = dict_cur.fetchone()
+    dict_cur.execute("""SELECT user_id FROM %s WHERE id = %s""", [AsIs(tableName), AsIs(tableRowID)])
+    ownerRow = dict_cur.fetchall()
     dict_cur.close()
     ownerRow = [dict(row) for row in ownerRow]
     ownerID = ownerRow[0]['user_id']

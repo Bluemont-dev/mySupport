@@ -1,5 +1,6 @@
 *.env
 *.csv
+*.db
 mySupport-env/
 __pycache__/
 *.pyc
