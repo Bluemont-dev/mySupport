@@ -1361,18 +1361,6 @@ def profile3delete(editID,formSource):
         else:
             dict_cur.execute("""COMMIT""")
         dict_cur.close()
-
-
-
-        # db.execute("BEGIN TRANSACTION")
-        # try:
-        #     # delete this LovedOneID from the db; deletion will cascade to LovedOneToChallenge
-        #     db.execute("DELETE FROM LovedOnes WHERE id = ?", editID)
-        # except:
-        #     db.execute("ROLLBACK")
-        #     abort(500)
-        # db.execute("COMMIT")
-        # we will proceed to the "try again" URL because we want to stay on profile3 after a deletion
         return redirect(nextURLs['tryAgainURL']) # or conditional destination, based on formSource
     else:
         flash("You are not authorized to delete this content.", flashStyling("warning"))
@@ -1398,28 +1386,44 @@ def profile4():
         userCounty = request.form.get('county');
         userCity = request.form.get('city');
         # save them to user's db record
-        nextURLs = getProfileNextURLs(request.form.get("formSource4"))
-        db.execute("BEGIN TRANSACTION")
+        passedDict = {}
+        if userState != '':
+           passedDict['state'] = userState
+        if userCounty != '':
+            passedDict['county'] = userCounty
+        if userCity != '':
+            passedDict['city'] = userCity
+        # print(f"Passed dictionary is {passedDict}")
+        keysList = list(passedDict.keys())
+        keysString = ",".join(keysList)
+        valuesList = list(passedDict.values())
+        valuesString = ""
+        for i in range(len(valuesList)):
+            if type(valuesList[i]) == str:
+                valuesString += "'" + valuesList[i] + "'"
+            else:
+                valuesString += str(valuesList[i])
+            if i < len(valuesList)-1:
+                valuesString += ","
+        # print(f"keysString is {keysString} and valuesString is {valuesString}")
+        if len(passedDict.keys()) > 1:
+            update_str = sql.SQL("UPDATE users SET (%s) = (%s) WHERE id = %s")
+        else:
+            update_str = sql.SQL("UPDATE users SET %s = %s WHERE id = %s")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
         try:
-            # update db record with form values
-            db.execute("UPDATE users SET zip = null WHERE id = ?", session.get('id'))
-            # inefficient, but the db requires a value, so we'll save a null value there
-            if userState:
-                db.execute("UPDATE users SET state = ? WHERE id = ?", userState, session.get('id'))
-            else:
-                db.execute("UPDATE users SET state = null WHERE id = ?", session.get('id'))
-            if userCounty:
-                db.execute("UPDATE users SET county = ? WHERE id = ?", userCounty, session.get('id'))
-            else:
-                db.execute("UPDATE users SET county = null WHERE id = ?", session.get('id'))
-            if userCity:
-                db.execute("UPDATE users SET city = ? WHERE id = ?", userCity, session.get('id'))
-            else:
-                db.execute("UPDATE users SET city = null WHERE id = ?", session.get('id'))
-        except:
-            db.execute("ROLLBACK")
+            # update user's row
+            dict_cur.execute(update_str,[AsIs(keysString),AsIs(valuesString),session.get('id')])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
+        nextURLs = getProfileNextURLs(request.form.get("formSource4"))
         return redirect(nextURLs['successURL']) # or conditional destination, based on formSource
 
 @app.route("/profile4/geo")
