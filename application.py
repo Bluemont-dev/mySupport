@@ -127,8 +127,8 @@ def index():
     # """, retrieveLimit)
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     dict_cur.execute("""SELECT id FROM discussions ORDER BY date_created DESC LIMIT (%s)""",[retrieveLimit])
-    allDiscussionIDs = dict_cur.fetchall()
-    # print(allDiscussionIDs)
+    allDiscussionIDs = [dict(row) for row in dict_cur.fetchall()]
+    print(f"allDiscussionIDs: {allDiscussionIDs}")
     # loop thru discussions and prep each one for display
     for item in allDiscussionIDs:
         commentCount = 0
@@ -136,7 +136,7 @@ def index():
         # count number of comments for each, add it to the dict
         # commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE discussionID = ?", item['id'])
         dict_cur.execute("""SELECT COUNT(*) FROM comments WHERE discussion_id = (%s)""",[item['id']])
-        commentCount = dict_cur.fetchone()
+        commentCount = [dict(row) for row in dict_cur.fetchall()]
         discussionRow[0]['commentCount'] = commentCount[0]['COUNT(*)']
         # get textContent from HTML for each discussion; add it to the dict
         textContent = getTextContentFromHTML(discussionRow[0]['text'])
@@ -156,7 +156,8 @@ def index():
     dict_cur.execute("""SELECT id FROM articles
     ORDER BY date_created DESC
     LIMIT (%s)""",[retrieveLimit])
-    allArticleIDs = dict_cur.fetchall()
+    allArticleIDs = [dict(row) for row in dict_cur.fetchall()]
+    # print(f"allArticleIDs: {allArticleIDs}")
     # loop thru articles and prep each one for display
     for item in allArticleIDs:
         commentCount = 0
@@ -164,8 +165,9 @@ def index():
         # count number of comments for each, add it to the dict
         # commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE articleID = ?", item['id'])
         dict_cur.execute("""SELECT COUNT(*) FROM comments WHERE article_id = (%s)""",[item['id']])
-        commentCount = dict_cur.fetchone()
-        articleRow[0]['commentCount'] = commentCount[0]['COUNT(*)']
+        commentCount = [dict(row) for row in dict_cur.fetchall()]
+        # print(f"commentCount: {commentCount}")
+        articleRow[0]['commentCount'] = commentCount[0]['count']
         articleRow[0]['publishedDateTimeString'] = articleRow[0]['publishedDateTimeString'][:articleRow[0]['publishedDateTimeString'].find('-')-1]
         articleRow[0]['website'] = urlparse(articleRow[0]['url']).netloc
         allArticlesList.append(articleRow[0])
@@ -173,7 +175,7 @@ def index():
     dict_cur.execute("""SELECT id, first_name, last_name, username, display_name_option, date_joined, city, county, state, profile_image FROM users ORDER BY date_joined DESC LIMIT (%s)""",[retrieveLimit])
     peopleRows = [dict(row) for row in dict_cur.fetchall()]
     dict_cur.close()
-    print(peopleRows)
+    # print(peopleRows)
     for row in peopleRows:
         personDisplayName = buildDisplayName(row)
         row['displayName'] = personDisplayName
@@ -185,7 +187,9 @@ def index():
 @app.route("/article/<articleID>")
 def article(articleID):
     # make sure article exists
-    articleRowPresence = db.execute("SELECT * FROM articles WHERE id = ?", int(articleID))
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM articles WHERE id = %s""", [int(articleID)])
+    articleRowPresence = [dict(row) for row in dict_cur.fetchall()]
     if not articleRowPresence:
         flash("We cannot find the article you're looking for.", flashStyling("warning"))
         return redirect("/articles")
@@ -206,14 +210,21 @@ def article(articleID):
 def articleComment(articleID):
     # get text content from form
     commentText = request.form.get('commentTextContent')
-    db.execute("BEGIN TRANSACTION")
-    # create a new row in comments table
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""BEGIN""")
     try:
-        newCommentID = db.execute("INSERT INTO comments (senderID, text, articleID) VALUES (?,?,?)", int(session.get('id')), commentText, int(articleID))
-    except:
-        db.execute("ROLLBACK")
+        # create new comment
+        dict_cur.execute("""INSERT INTO comments (sender_id, text, article_id) VALUES (%s,%s,%s) RETURNING id""",[int(session.get('id')), commentText, int(articleID)])
+        newCommentID = [dict(row) for row in dict_cur.fetchall()]
+        newCommentID = newCommentID[0]['id']
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    else:
+        dict_cur.execute("""COMMIT""")
+    dict_cur.close()
     # redirect to that same article view, jumping to the anchor of the new comment
     return redirect("/article/" + articleID + "#commentItemTextDiv" + str(newCommentID))
 
@@ -223,18 +234,22 @@ def articleComment(articleID):
 def articleCommentEdit(articleID, commentID):
     # in both GET and POST, make sure the items both exist and the logged-in user is the owner of the comment being edited
     # make sure article exists
-    articleRowPresence = db.execute("SELECT * FROM articles WHERE id = ?", int(articleID))
-    if not articleRowPresence:
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM articles WHERE id = %s""", [int(articleID)])
+    articleRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if len(articleRowPresence) == 0:
         flash("We cannot find the article you're looking for.", flashStyling("warning"))
         return redirect("/articles")
     # make sure comment exists AND is associated with that article
-    commentRowPresence = db.execute("SELECT * FROM comments WHERE id = ?", int(commentID))
-    if not (commentRowPresence and commentRowPresence[0]['articleID'] == articleRowPresence[0]['id']):
+    dict_cur.execute("""SELECT * FROM comments WHERE id = %s""", [int(commentID)])
+    commentRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if not (len(commentRowPresence)>0 and commentRowPresence[0]['article_id'] == articleRowPresence[0]['id']):
         flash("We cannot find the comment you're looking for.", flashStyling("warning"))
         return redirect("/")
     # make sure the comment to be edited belongs to the logged-in user
-    senderIDList = db.execute("SELECT senderID FROM comments WHERE id = ?", int(commentID))
-    if senderIDList[0]['senderID'] != int(session.get('id')):
+    dict_cur.execute("""SELECT sender_id FROM comments WHERE id = %s""", [int(commentID)])
+    senderIDList = [dict(row) for row in dict_cur.fetchall()]
+    if senderIDList[0]['sender_id'] != int(session.get('id')):
         flash("You are not authorized to edit this comment.", flashStyling("warning"))
         return redirect("/article/" + articleID)
     if request.method == "GET":
@@ -251,14 +266,20 @@ def articleCommentEdit(articleID, commentID):
     else:
         # we have a post request
         textContent = request.form.get('commentEditTextContent')
-        db.execute("BEGIN TRANSACTION")
-        # update that row in comments table
+
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
         try:
-            db.execute("UPDATE comments SET text = ? WHERE id = ?", textContent, int(commentID))
-        except:
-            db.execute("ROLLBACK")
+            # update the comment
+            dict_cur.execute("""UPDATE comments SET text = %s WHERE id = %s""", [textContent, int(commentID)])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         # redirect to that same article view, jumping to the anchor of the updated comment
         return redirect("/article/" + articleID + "#commentItemTextDiv" + str(commentID))
 
@@ -268,28 +289,36 @@ def articleCommentEdit(articleID, commentID):
 def articleCommentDelete(articleID, commentID):
     # make sure the items both exist and the logged-in user is the owner of the comment being deleted
     # make sure article exists
-    articleRowPresence = db.execute("SELECT * FROM articles WHERE id = ?", int(articleID))
-    if not articleRowPresence:
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM articles WHERE id = %s""", [int(articleID)])
+    articleRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if len(articleRowPresence) == 0:
         flash("We cannot find the article you're looking for.", flashStyling("warning"))
-        return redirect("/")
+        return redirect("/articles")
     # make sure comment exists AND is associated with that article
-    commentRowPresence = db.execute("SELECT * FROM comments WHERE id = ?", int(commentID))
-    if not (commentRowPresence and commentRowPresence[0]['articleID'] == articleRowPresence[0]['id']):
+    dict_cur.execute("""SELECT * FROM comments WHERE id = %s""", [int(commentID)])
+    commentRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if not (len(commentRowPresence)>0 and commentRowPresence[0]['article_id'] == articleRowPresence[0]['id']):
         flash("We cannot find the comment you're looking for.", flashStyling("warning"))
         return redirect("/")
-    # make sure the comment to be deleted belongs to the logged-in user
-    senderIDList = db.execute("SELECT senderID FROM comments WHERE id = ?", int(commentID))
-    if senderIDList[0]['senderID'] != int(session.get('id')):
+    # make sure the comment to be edited belongs to the logged-in user
+    dict_cur.execute("""SELECT sender_id FROM comments WHERE id = %s""", [int(commentID)])
+    senderIDList = [dict(row) for row in dict_cur.fetchall()]
+    if senderIDList[0]['sender_id'] != int(session.get('id')):
         flash("You are not authorized to delete this comment.", flashStyling("warning"))
         return redirect("/article/" + articleID)
-    db.execute("BEGIN TRANSACTION")
+    dict_cur.execute("""BEGIN""")
     try:
-        # delete this comment from db
-        db.execute("DELETE FROM comments WHERE id = ?", int(commentID))
-    except:
-        db.execute("ROLLBACK")
+        # delete the comment
+        dict_cur.execute("""DELETE FROM comments WHERE id = %s""", [int(commentID)])
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    else:
+        dict_cur.execute("""COMMIT""")
+    dict_cur.close()
     return redirect("/article/" + articleID)
 
 @app.route("/article/edit/<articleID>", methods = ["GET","POST"])
@@ -301,18 +330,23 @@ def articleEdit(articleID):
         userRows = getUserRows(session.get("id"))
         selectsDict = dbSimpleDictBuilder('relationships+id+ASC','genders+id+ASC','ages+id+ASC','challenges+challenge+ASC')
         # make sure the item exists
-        articleRowPresence = db.execute("SELECT * FROM articles WHERE id = ?", int(articleID))
-        if not articleRowPresence:
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT * FROM articles WHERE id = %s""", [int(articleID)])
+        articleRowPresence = len(dict_cur.fetchall())
+        if articleRowPresence == 0:
             flash("We cannot find the article you're looking for.", flashStyling("warning"))
             return redirect("/articles")
         # make sure the item to be edited belongs to the logged-in user
-        senderIDList = db.execute("SELECT senderID FROM articles WHERE id = ?", int(articleID))
-        if senderIDList[0]['senderID'] != int(session.get('id')):
+        dict_cur.execute("""SELECT sender_id FROM articles WHERE id = %s""", [int(articleID)])
+        senderIDList = [dict(row) for row in dict_cur.fetchall()]
+        dict_cur.close()
+        if senderIDList[0]['sender_id'] != int(session.get('id')):
             flash("You are not authorized to edit this content.", flashStyling("warning"))
             return redirect("/article/" + articleID)
         articleRows = getArticleRowsForDisplay(articleID)
-        articleRows[0]['datePublished'] = articleRows[0]['datePublished'][:10]
+        articleRows[0]['date_published'] = str(articleRows[0]['date_published'])[:10]
         editMode = "edit"
+        print(articleRows[0])
         return render_template("articleThread.html", userDict = userDict, selectsDict = selectsDict, articleRow = articleRows[0], editMode = editMode)
     else:
         # post request
@@ -323,41 +357,73 @@ def articleEdit(articleID):
         title = request.form.get('title')
         description = request.form.get('description')
         url = request.form.get('articleURL')
-        datePublished = request.form.get('datePublished') + " 00:00:00"
+        datePublished = request.form.get('date_published') + " 00:00:00"
         if request.form.get('useOGImage') == 'yes':
             ogImage = request.form.get('ogImagePath')
         else:
             ogImage = None
         # if URL is changed from the value stored in db, we need to prompt the user to choose between creating a new article (deleting the current one) or just cancel
-        existingURLList = db.execute("SELECT url FROM articles WHERE id = ?", int(articleID))
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT url FROM articles WHERE id = %s""", [int(articleID)])
+        existingURLList = dict_cur.fetchall()
         existingURL = existingURLList[0]['url']
+        print(f"Existing URL is: {existingURL}")
+        print(f"submitted url is: {url}")
         if url != existingURL:
             flash("You cannot change the URL of an existing article, but you can create a new article with the new URL.", flashStyling("warning"))
             return redirect("/article/edit/" + articleID)
         # begin transaction
         # write new rows to ArticleToChallenge, etc.
-        db.execute("BEGIN TRANSACTION")
+        passedDict = {}
+        passedDict['title'] = title
+        passedDict['description'] = description
+        passedDict['url'] = url
+        passedDict['date_published'] = datePublished
+        passedDict['og_image'] = ogImage
+        print(f"Passed dictionary is {passedDict}")
+        keysList = list(passedDict.keys())
+        keysString = ",".join(keysList)
+        valuesList = list(passedDict.values())
+        valuesString = ""
+        for i in range(len(valuesList)):
+            if type(valuesList[i]) == str:
+                valuesString += "'" + valuesList[i] + "'"
+            else:
+                valuesString += str(valuesList[i])
+            if i < len(valuesList)-1:
+                valuesString += ","
+        # print(f"keysString is {keysString} and valuesString is {valuesString}")
+        if len(passedDict.keys()) > 1:
+            update_str = sql.SQL("UPDATE articles SET (%s) = (%s) WHERE id = %s")
+        else:
+            update_str = sql.SQL("UPDATE articles SET %s = %s WHERE id = %s")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
         try:
-            # remove all entries for this article in ArticleToChallenge, etc.
-            db.execute("DELETE FROM ArticleToChallenge WHERE articleID = ?", int(articleID))
-            db.execute("DELETE FROM ArticleToAge WHERE articleID = ?", int(articleID))
-            db.execute("DELETE FROM ArticleToGender WHERE articleID = ?", int(articleID))
-            # update db record for article with form values
-            db.execute("UPDATE articles SET title = ?, description = ?, datePublished = ?, ogImage = ? WHERE id = ?", title, description, datePublished, ogImage, int(articleID))
-            # populate the other tables as needed (challenges, ages, genders)
+            # update article row
+            dict_cur.execute(update_str,[AsIs(keysString),AsIs(valuesString),int(articleID)])
+            # remove all challenges, ages, genders from their article join tables
+            dict_cur.execute("""DELETE FROM article_challenge WHERE article_id = %s""",[int(articleID)])
+            dict_cur.execute("""DELETE FROM article_age WHERE article_id = %s""",[int(articleID)])
+            dict_cur.execute("""DELETE FROM article_gender WHERE article_id = %s""",[int(articleID)])
+            # insert new challenges, ages, genders into their article join tables
             if len(newChallengeList) > 0:
                 for challenge in newChallengeList:
-                    db.execute("INSERT INTO ArticleToChallenge (articleID, challengeID) VALUES (?,?)", int(articleID), challenge)
+                    dict_cur.execute("""INSERT INTO article_challenge (article_id, challenge_id) VALUES (%s,%s)""", [int(articleID), challenge])
             if len(newAgeList) > 0:
                 for age in newAgeList:
-                    db.execute("INSERT INTO ArticleToAge (articleID, ageID) VALUES (?,?)", int(articleID), age)
+                    dict_cur.execute("""INSERT INTO article_age (article_id, age_id) VALUES (%s,%s)""", [int(articleID), age])
             if len(newGenderList) > 0:
                 for gender in newGenderList:
-                    db.execute("INSERT INTO ArticleToGender (articleID, genderID) VALUES (?,?)", int(articleID), gender)
-        except:
-            db.execute("ROLLBACK")
+                    dict_cur.execute("""INSERT INTO article_gender (article_id, gender_id) VALUES (%s,%s)""", [int(articleID), gender])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         # redirect the user to the view version of this article that was just edited
         return redirect("/article/" + articleID)
 
@@ -375,9 +441,9 @@ def getArticleDetails():
         'id':"",
         'title':None,
         'url':url,
-        'ogImage':None,
+        'og_image':None,
         'description':None,
-        'datePublished':None,
+        'date_published':None,
         'challenge_ids':"",
         'age_ids':"",
         'gender_ids':""
@@ -397,7 +463,8 @@ def getArticleDetails():
     articleRow[0]['url'] = url
     articleRow[0]['title'] = soup.h1.get_text()
     if soup.find("meta", property="og:image"):
-        articleRow[0]['ogImage'] = soup.find("meta", property="og:image")['content']
+        articleRow[0]['og_image'] = soup.find("meta", property="og:image")['content']
+    print(f"Line 401: og_image is: {articleRow[0]['og_image']}")
     if soup.find("meta", property="og:url"):
         articleRow[0]['url'] = soup.find("meta", property="og:url")['content']
     if soup.find("meta", property="og:description"):
@@ -419,12 +486,11 @@ def getArticleDetails():
                 datePublishedTestString = datePublishedTestString.strip('\"\'')
                 # print(f"dataPublishedTestString: {datePublishedTestString}")
     if checkDateFormat (datePublishedTestString):
-        articleRow[0]['datePublished'] = datePublishedTestString
+        articleRow[0]['date_published'] = datePublishedTestString
     else:
-        articleRow[0]['datePublished'] = None
+        articleRow[0]['date_published'] = None
     print(f"articleRow[0] = {articleRow[0]}")
     return render_template("articleThread.html", userDict = userDict, userRows = userRows, selectsDict = selectsDict, articleRow = articleRow[0], editMode = editMode)
-
 
 @app.route("/article/thread/", methods = ["GET","POST"])
 @login_required
@@ -440,9 +506,9 @@ def articleThreadBlank():
             'id':"",
             'title':"",
             'url':"",
-            'ogImage':"",
+            'og_image':"",
             'description':"",
-            'datePublished':"",
+            'date_published':"",
             'challenge_ids':"",
             'age_ids':"",
             'gender_ids':""
@@ -455,38 +521,53 @@ def articleThreadBlank():
         # note that request.form returns an "ImmutableMultidict", so the dict() method turns it into a regular dict
         # to write a new article, take the following steps
         # get the selections from each of the selects and condense them into lists/arrays
+        passedDict = {}
         newChallengeList = request.form.getlist('challenge')
         newAgeList = request.form.getlist('age')
         newGenderList = request.form.getlist('gender')
         # capture the content of other form values
-        title = request.form.get('title')
-        description = request.form.get('description')
-        url = request.form.get('articleURL')
-        datePublished = request.form.get('datePublished') + " 00:00:00"
+        passedDict['title'] = request.form.get('title')
+        passedDict['description'] = request.form.get('description')
+        passedDict['url'] = request.form.get('articleURL')
+        passedDict['date_published'] = request.form.get('date_published') + " 00:00:00"
         if request.form.get('useOGImage') == 'yes':
-            ogImage = request.form.get('ogImagePath')
+            passedDict['og_image'] = request.form.get('ogImagePath')
         else:
-            ogImage = None
+            passedDict['og_image'] = None
+        passedDict['sender_id'] = session.get('id')
+        print(f"Passed dictionary is {passedDict}")
+        insert_flds = [fld_name for fld_name in passedDict.keys()]
+        print(f"Insert fields: {insert_flds}")
+        insert_str = sql.SQL("INSERT INTO articles ({}) VALUES ({}) RETURNING id").format(
+        sql.SQL(",").join(map(sql.Identifier, insert_flds)),
+        sql.SQL(",").join(map(sql.Placeholder, insert_flds)))
+        # print(f"Insert string is: {insert_str}")
         # begin transaction
-        db.execute("BEGIN TRANSACTION")
-        # create new article and capture its id
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
         try:
-            # create new article row
-            newID = db.execute("INSERT INTO articles (url, title, description, ogImage, datePublished, senderID) VALUES (?,?,?,?,?,?)", url, title, description, ogImage, datePublished, session.get("id"))
+            # create new article and capture its id
+            dict_cur.execute(insert_str,passedDict)
+            newID = [dict(row) for row in dict_cur.fetchall()]
+            newID = newID[0]['id']
             # populate the other tables as needed (challenges, ages, genders)
             if len(newChallengeList) > 0:
                 for challenge in newChallengeList:
-                    db.execute("INSERT INTO ArticleToChallenge (articleID, challengeID) VALUES (?,?)", newID, challenge)
+                    dict_cur.execute("""INSERT INTO article_challenge (article_id, challenge_id) VALUES (%s,%s)""", [newID, challenge])
             if len(newAgeList) > 0:
                 for age in newAgeList:
-                    db.execute("INSERT INTO ArticleToAge (articleID, ageID) VALUES (?,?)", newID, age)
+                    dict_cur.execute("""INSERT INTO article_age (article_id, age_id) VALUES (%s,%s)""", [newID, age])
             if len(newGenderList) > 0:
                 for gender in newGenderList:
-                    db.execute("INSERT INTO ArticleToGender (articleID, genderID) VALUES (?,?)", newID, gender)
-        except:
-            db.execute("ROLLBACK")
+                    dict_cur.execute("""INSERT INTO article_gender (article_id, gender_id) VALUES (%s,%s)""", [newID, gender])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         # redirect the user to the view version of this discussion that was just created
         return redirect("/article/" + str(newID))
 
@@ -495,23 +576,44 @@ def articleThreadBlank():
 @email_required
 def articleDelete(articleID):
     # make sure article exists
-    articleRowPresence = db.execute("SELECT * FROM articles WHERE id = ?", int(articleID))
-    if not articleRowPresence:
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM articles WHERE id = %s""", [int(articleID)])
+    articleRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if len(articleRowPresence) == 0:
         flash("We cannot find the article you're looking for.", flashStyling("warning"))
         return redirect("/articles")
     # make sure the article to be deleted belongs to the logged-in user
-    senderIDList = db.execute("SELECT senderID FROM articles WHERE id = ?", int(articleID))
-    if senderIDList[0]['senderID'] != int(session.get('id')):
+    dict_cur.execute("""SELECT sender_id FROM articles WHERE id = %s""", [int(articleID)])
+    senderIDList = [dict(row) for row in dict_cur.fetchall()]
+    if senderIDList[0]['sender_id'] != int(session.get('id')):
         flash("You are not authorized to delete this article.", flashStyling("warning"))
         return redirect("/article/" + articleID)
-    db.execute("BEGIN TRANSACTION")
+
+    dict_cur.execute("""BEGIN""")
     try:
-        # delete this article from db
-        db.execute("DELETE FROM articles WHERE id = ?", int(articleID))
-    except:
-        db.execute("ROLLBACK")
+        # delete the article
+        dict_cur.execute("""DELETE FROM articles WHERE id = %s""", [int(articleID)])
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    else:
+        dict_cur.execute("""COMMIT""")
+    dict_cur.close()
+
+
+    # db.execute("BEGIN TRANSACTION")
+    # try:
+    #     # delete this article from db
+    #     db.execute("DELETE FROM articles WHERE id = ?", int(articleID))
+    # except:
+    #     db.execute("ROLLBACK")
+    #     abort(500)
+    # db.execute("COMMIT")
+
+
+
     return redirect("/articles")
 
 @app.route("/articles", methods = ["GET"])
@@ -521,23 +623,26 @@ def articles():
     allArticlesList = []
     commentCount = 0
     # retrieve 50 most recent articles from db
-    allArticleIDs = db.execute("""
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
     SELECT id FROM articles
-    ORDER BY dateCreated DESC
-    LIMIT ?;
-    """, retrieveLimit)
+    ORDER BY date_created DESC
+    LIMIT %s;
+    """, [retrieveLimit])
+    allArticleIDs = [dict(row) for row in dict_cur.fetchall()]
     # print(allArticleIDs)
     # loop thru articles and prep each one for display
     for item in allArticleIDs:
         commentCount = 0
         articleRow = getArticleRowsForDisplay(item['id'])
         # count number of comments for each, add it to the dict
-        commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE articleID = ?", item['id'])
-        articleRow[0]['commentCount'] = commentCount[0]['COUNT(*)']
+        dict_cur.execute("SELECT COUNT(*) FROM comments WHERE article_id = %s", [item['id']])
+        commentCount = [dict(row) for row in dict_cur.fetchall()]
+        articleRow[0]['commentCount'] = commentCount[0]['count']
         articleRow[0]['publishedDateTimeString'] = articleRow[0]['publishedDateTimeString'][:articleRow[0]['publishedDateTimeString'].find('-')-1]
         articleRow[0]['website'] = urlparse(articleRow[0]['url']).netloc
         allArticlesList.append(articleRow[0])
-    # print(allArticlesList)
+    print(allArticlesList)
     return render_template ("articlesView.html", userDict = userDict, allArticlesList = allArticlesList)
     # return("Here we would list 50 articles")
 
@@ -1621,8 +1726,7 @@ def buildUserDict():
         # rows = db.execute("SELECT * FROM users WHERE id = ?", session.get("id"))
         dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         dict_cur.execute("""SELECT * FROM users WHERE id = (%s)""", [session.get('id')])
-        rows = dict_cur.fetchall()
-        rows = [dict(row) for row in rows]
+        rows = [dict(row) for row in dict_cur.fetchall()]
         displayNameMaxLength = 20
         if rows[0]["display_name_option"] == 1:
             displayName = rows[0]["username"]
@@ -1643,7 +1747,7 @@ def buildUserDict():
                 displayName = firstName + " " + lastName
         # now get a count of unread messages
         dict_cur.execute("""SELECT COUNT (message_id) FROM message_recipient WHERE recipient_id = (%s) AND read = 'false'""",[session.get("id")])
-        unreadMessageCount = dict_cur.fetchone()
+        unreadMessageCount = [dict(row) for row in dict_cur.fetchall()]
         # unreadMessageCount = db.execute("SELECT COUNT (messageID) FROM MessageToRecipient WHERE recipientID = ? AND read = 0", session.get("id"))
         dict_cur.close()
 
@@ -1653,7 +1757,7 @@ def buildUserDict():
             "profileImage":rows[0]["profile_image"],
             "emailConfirmed":rows[0]["email_confirmed"],
             "role":rows[0]["role"],
-            "unreadMessageCount":unreadMessageCount['count']
+            "unreadMessageCount":unreadMessageCount[0]['count']
             }
     return userDict
 
@@ -1703,9 +1807,8 @@ def setSessionValues(rows):
 def getUserRows(id):
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     dict_cur.execute("""SELECT * FROM users WHERE id = (%s)""", [id])
-    rows = dict_cur.fetchall()
+    rows = [dict(row) for row in dict_cur.fetchall()]
     dict_cur.close()
-    rows = [dict(row) for row in rows]
     return rows
 
 # check image file header data to make sure it's an image file; uses imghdr library
@@ -1742,9 +1845,8 @@ def getProfileNextURLs(formSource):
 def checkOwnership(tableName, tableRowID):
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     dict_cur.execute("""SELECT user_id FROM %s WHERE id = %s""", [AsIs(tableName), AsIs(tableRowID)])
-    ownerRow = dict_cur.fetchall()
+    ownerRow = [dict(row) for row in dict_cur.fetchall()]
     dict_cur.close()
-    ownerRow = [dict(row) for row in ownerRow]
     ownerID = ownerRow[0]['user_id']
     if session.get("id") != ownerID:
         flash("That item is not yours to edit.", flashStyling("danger"))
@@ -1765,9 +1867,8 @@ def dbSimpleDictBuilder(*args):
         dbExecuteString = 'SELECT * FROM ' + table + ' ORDER BY ' + orderBy + ' ' + orderType
         dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         dict_cur.execute(dbExecuteString)
-        rows = dict_cur.fetchall()
+        rows = [dict(row) for row in dict_cur.fetchall()]
         dict_cur.close()
-        rows = [dict(row) for row in rows]
         simpleDict[table] = rows
     return (simpleDict)
 
@@ -1777,9 +1878,8 @@ def citiesDictBuilder(zipcode,state,city,county):
     selects4Dict = {'zip':[], 'state':[], 'city':[], 'county':[]}
     matches4Dict = {'state':[], 'city':[], 'county':[]}
     dict_cur.execute("""SELECT DISTINCT state_name FROM cities ORDER BY state_name ASC""")
-    alphaStatesList = dict_cur.fetchall()
+    alphaStatesList = [dict(row) for row in dict_cur.fetchall()]
     dict_cur.close()
-    alphaStatesList = [dict(row) for row in alphaStatesList]
     matchingStatesList = []
     alphaCountiesList = []
     matchingCountiesList = []
@@ -1790,8 +1890,7 @@ def citiesDictBuilder(zipcode,state,city,county):
     # if zipcode and state and not county and not city:
         dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         dict_cur.execute("""SELECT * FROM cities WHERE zips LIKE (%s)""", ["%"+zipcode+"%"])
-        zipsRowsFound = dict_cur.fetchall()
-        zipsRowsFound = [dict(row) for row in zipsRowsFound]
+        zipsRowsFound = [dict(row) for row in dict_cur.fetchall()]
         dict_cur.close()
         if len(zipsRowsFound) == 0:
             selects4Dict['zip'].append('invalid')
@@ -1802,15 +1901,12 @@ def citiesDictBuilder(zipcode,state,city,county):
         # the following line should not be needed since it appears above the if statement
         # alphaStatesList = cityConnect.execute("SELECT DISTINCT state_name FROM cities ORDER BY state_name ASC")
         dict_cur.execute("""SELECT DISTINCT state_name FROM cities WHERE state_name = (%s)""", [state])
-        matchingStatesList = dict_cur.fetchall()
-        matchingStatesList = [dict(row) for row in matchingStatesList]
+        matchingStatesList = [dict(row) for row in dict_cur.fetchall()]
         dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) ORDER BY county_name ASC""", [state])
-        alphaCountiesList = dict_cur.fetchall()
-        alphaCountiesList = [dict(row) for row in alphaCountiesList]
+        alphaCountiesList = [dict(row) for row in dict_cur.fetchall()]
         # populate both city and county alpha lists based on state and zip
         dict_cur.execute("""SELECT DISTINCT county_name FROM cities WHERE state_name = (%s) and zips LIKE (%s)  ORDER BY county_name ASC""", [state, "%"+zipcode+"%"])
-        matchingCountiesList = dict_cur.fetchall()
-        matchingCountiesList = [dict(row) for row in matchingCountiesList]
+        matchingCountiesList = [dict(row) for row in dict_cur.fetchall()]
         if len(matchingCountiesList) > 1:
             dict_cur.execute("""SELECT DISTINCT city FROM cities WHERE state_name = (%s) and zips LIKE (%s) ORDER BY city ASC""", [state, "%"+zipcode+"%"])
             matchingCitiesList = [dict(row) for row in dict_cur.fetchall()]
@@ -2119,48 +2215,110 @@ def cleanThisHTML(rawHTML):
 
 def getArticleRowsForDisplay(articleID):
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    dict_cur.execute("""
-        SELECT
-        articles.id,
-        articles.sender_id,
-        articles.url,
-        articles.title,
-        articles.description,
-        articles.date_created,
-        articles.date_published,
-        articles.og_image,
-        users.first_name,
-        users.last_name,
-        users.username,
-        users.profile_image,
-        users.display_name_option,
-        string_agg(DISTINCT challenges.id::text) AS challenge_ids,
-        string_agg(DISTINCT challenges.challenge::text) AS challenges,
-        string_agg(DISTINCT ages.id::text) AS age_ids,
-        string_agg(DISTINCT ages.age::text) AS ages,
-        string_agg(DISTINCT genders.id::text) AS gender_ids,
-        string_agg(DISTINCT genders.gender::text) AS genders
-        FROM articles
-        LEFT OUTER JOIN article_challenge on articles.id = article_challenge.article_id
-        LEFT OUTER JOIN challenges on challenges.id = article_challenge.challenge_id
-        LEFT OUTER JOIN article_age on articles.id = article_age.article_id
-        LEFT OUTER JOIN ages on ages.id = article_age.age_id
-        LEFT OUTER JOIN article_gender on articles.id = article_gender.article_id
-        LEFT OUTER JOIN genders on genders.id = article_gender.gender_id
-        LEFT OUTER JOIN users on users.id = articles.sender_id
-        WHERE articles.id = (%s)
-    """, [int(articleID)])
-    articleRows = [dict(row) for row in dict_cur.fetchall()]
+    try:
+        dict_cur.execute("""
+            SELECT
+            DISTINCT ON (articles.id) articles.id,
+            articles.sender_id,
+            articles.url,
+            articles.title,
+            articles.description,
+            articles.date_created,
+            articles.date_published,
+            articles.og_image,
+            users.first_name,
+            users.last_name,
+            users.username,
+            users.profile_image,
+            users.display_name_option
+            FROM articles
+            LEFT OUTER JOIN article_challenge on articles.id = article_challenge.article_id
+            LEFT OUTER JOIN challenges on challenges.id = article_challenge.challenge_id
+            LEFT OUTER JOIN article_age on articles.id = article_age.article_id
+            LEFT OUTER JOIN ages on ages.id = article_age.age_id
+            LEFT OUTER JOIN article_gender on articles.id = article_gender.article_id
+            LEFT OUTER JOIN genders on genders.id = article_gender.gender_id
+            LEFT OUTER JOIN users on users.id = articles.sender_id
+            WHERE articles.id = %s
+            ORDER BY articles.id
+        """, [int(articleID)])
+        articleRows = [dict(row) for row in dict_cur.fetchall()]
+        # print(f"Records retrieved: {len(articleRows)}")
+        # print("Preliminary article rows:")
+        # print(articleRows)
+        for row in articleRows:
+            # get challenge ids as array and add them to each row
+            dict_cur.execute("""
+            SELECT article_id, 
+            array_agg(challenge_id) AS challenge_ids
+            FROM article_challenge
+            WHERE article_id = %s
+            GROUP BY article_id""",[row['id']])
+            challenge_ids = [dict(row) for row in dict_cur.fetchall()]
+            challenge_ids = challenge_ids[0]['challenge_ids']
+            # print(f"challenge_ids to be added: {challenge_ids}")
+            row['challenge_ids'] = challenge_ids
+            # get challenges as strings and add them, comma-separated, to one big string
+            challenge_ids_string = ','.join(map(str, challenge_ids))
+            dict_cur.execute("""SELECT string_agg(challenge,',') AS my_challenges FROM challenges WHERE id IN (%s)""",[AsIs(challenge_ids_string)])
+            challenges = dict_cur.fetchone()['my_challenges']
+            # print (f"challenges to be added: {challenges}")
+            row['challenges'] = challenges
+            # get age ids as array and add them to each row
+            dict_cur.execute("""
+            SELECT article_id, 
+            array_agg(age_id) AS age_ids
+            FROM article_age
+            WHERE article_id = %s
+            GROUP BY article_id""",[row['id']])
+            age_ids = [dict(row) for row in dict_cur.fetchall()]
+            age_ids = age_ids[0]['age_ids']
+            # print(f"age_ids to be added: {age_ids}")
+            row['age_ids'] = age_ids
+            # get ages as strings and add them, comma-separated, to one big string
+            age_ids_string = ','.join(map(str, age_ids))
+            dict_cur.execute("""SELECT string_agg(age,',') AS my_ages FROM ages WHERE id IN (%s)""",[AsIs(age_ids_string)])
+            ages = dict_cur.fetchone()['my_ages']
+            # print (f"ages to be added: {ages}")
+            row['ages'] = ages
+            # get gender ids as array and add them to each row
+            dict_cur.execute("""
+            SELECT article_id, 
+            array_agg(gender_id) AS gender_ids
+            FROM article_gender
+            WHERE article_id = %s
+            GROUP BY article_id""",[row['id']])
+            gender_ids = [dict(row) for row in dict_cur.fetchall()]
+            gender_ids = gender_ids[0]['gender_ids']
+            # print(f"gender_ids to be added: {gender_ids}")
+            row['gender_ids'] = gender_ids
+            # get genders as strings and add them, comma-separated, to one big string
+            gender_ids_string = ','.join(map(str, gender_ids))
+            dict_cur.execute("""SELECT string_agg(gender,',') AS my_genders FROM genders WHERE id IN (%s)""",[AsIs(gender_ids_string)])
+            genders = dict_cur.fetchone()['my_genders']
+            # print (f"genders to be added: {genders}")
+            row['genders'] = genders
+        # print("Enhanced article rows:")
+        print(articleRows)
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
+        abort(500)
+    else:
+        dict_cur.execute("""COMMIT""")
     dict_cur.close()
     articleRows[0]['displayName'] = buildDisplayName(articleRows[0])
     articleRows[0]['dateTimeString'] = buildDateTimeString(articleRows[0]['date_created'])
     articleRows[0]['publishedDateTimeString'] = buildDateTimeString(articleRows[0]['date_published'])
+    # print("Article rows:")
+    # print (articleRows)
     return articleRows
 
 def getArticleCommentRowsForDisplay(articleID):
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     dict_cur.execute("""
-        SELECT comments.id, comments.text, comments.sender_id, comments.date_created, users.first_name, users.lastName, users.username, users.display_name_option, users.profile_image
+        SELECT comments.id, comments.text, comments.sender_id, comments.date_created, users.first_name, users.last_name, users.username, users.display_name_option, users.profile_image
         FROM comments
         LEFT OUTER JOIN users on comments.sender_id = users.id
         WHERE comments.article_id = (%s)

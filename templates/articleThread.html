@@ -31,7 +31,7 @@
                 <label for="url" class="form-label">First, type or paste the URL (web address) of the article:</label><br>
                 <span class="d-flex align-items-middle">
                 {% if editMode == "edit" %}
-                    <input type="text" class="form-control" id="url" name="url" size="80" autocomplete="off" value='{{ articleRow['url'] }}'>
+                    <input type="text" class="form-control" id="url" name="url" size="80" autocomplete="off" value="{{ articleRow['url'] }}">
                 {% else %}
                     <input type="text" class="form-control" id="url" name="url" size="80" autocomplete="off">
                 {% endif %}
@@ -41,10 +41,10 @@
         </form>
         <form action="/article/thread/" method="POST" id="articleThreadForm" name="articleThreadForm">
             <input type="hidden" name="editMode" id="editMode" value='{{ editMode }}'>
-            <input type="hidden" name="ogImagePath" id="ogImagePath" value='{{ articleRow['ogImage'] }}'>
+            <input type="hidden" name="ogImagePath" id="ogImagePath" value="{{ articleRow['og_image'] }}">
             <!--<input type="hidden" name="descriptionText" id="descriptionText" value="">-->
             <input type="hidden" name="articleURL" id="articleURL" value="">
-            <input type="hidden" name="articleID" id="articleID" value='{{ articleRow['id'] }}'>
+            <input type="hidden" name="articleID" id="articleID" value="{{ articleRow['id'] }}">
             <div class="row d-none mt-4" id ="otherContainer">
                 <div class="col-lg-7">
                     <!--first column of this row is for composition of article-->
@@ -54,7 +54,7 @@
                             <label for="title" class="form-label">Title: <small><em>required</em></small></label><br>
                             <input type="text" class="form-control" size="50" autocomplete="off" id="title" name="title"
                             {% if articleRow['title'] %}
-                            value='{{ articleRow['title'] }}'
+                            value="{{ articleRow['title'] }}"
                             {% else %}
                             value=""
                             {% endif %}
@@ -64,9 +64,9 @@
                     </div>
                     <div class="mt-4" id="datePublishedDiv">
                         <label for="datePublished" class="form-label">Date published: <small><em>required</em>&nbsp;(YYYY-MM-DD)</small></label><br>
-                        <input type="text" class="form-control" id="datePublished" name="datePublished"
-                        {% if articleRow['datePublished'] %}
-                        value='{{ articleRow['datePublished'] }}'
+                        <input type="text" class="form-control" id="datePublished" name="date_published"
+                        {% if articleRow['date_published'] %}
+                        value="{{ articleRow['date_published'] }}"
                         {% else %}
                         value=""
                         {% endif %}
@@ -80,7 +80,7 @@
                             <textarea class="form-control" id="description" name="description" rows="5" cols="40"></textarea>
                         {% endif %}
                     </div>
-                    {% if articleRow['ogImage'] %}
+                    {% if articleRow['og_image'] %}
                     <div class="my-4 d-none" id="ogImageDiv">
                         <div class="form-check">
                           <input class="form-check-input" type="checkbox" name="useOGImage" value="yes" id="useOGImage" onClick="checkbox_click(this.id)" checked>
@@ -89,7 +89,7 @@
                           </label>
                         </div>
                         <div>
-                            <img src='{{ articleRow['ogImage'] }}'>
+                            <img src="{{ articleRow['og_image'] }}">
                         </div>
                     </div>
                     {% endif %}
@@ -101,7 +101,7 @@
                       <label for="challenge" class="form-label">living with: <em>(choose all that apply)</em></label>
                       <select class="form-select" id="challenge" name="challenge" multiple size="4">
                         {% for item in selectsDict['challenges'] %}
-                        <option value="{{ item['id'] }}" {% if articleRow['challenge_ids'] and item['id']|string in articleRow['challenge_ids'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if articleRow['challenge_ids'] and item['id'] in articleRow['challenge_ids'] %}selected{% endif %}>
                             {{ item['challenge'] }}
                         </option>
                         {% endfor %}
@@ -111,7 +111,7 @@
                       <label for="age" class="form-label">whose age is:  <em>(choose all that apply)</em></label>
                       <select class="form-select" id="age" name="age" multiple size="4">
                         {% for item in selectsDict['ages'] %}
-                        <option value="{{ item['id'] }}" {% if articleRow['age_ids'] and item['id']|string in articleRow['age_ids'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if articleRow['age_ids'] and item['id'] in articleRow['age_ids'] %}selected{% endif %}>
                             {{ item['age'] }}
                         </option>
                         {% endfor %}
@@ -121,7 +121,7 @@
                       <label for="gender" class="form-label">whose gender is:  <em>(choose all that apply)</em></label>
                       <select class="form-select" id="gender" name="gender" multiple size="4">
                         {% for item in selectsDict['genders'] %}
-                        <option value="{{ item['id'] }}" {% if articleRow['gender_ids'] and item['id']|string in articleRow['gender_ids'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if articleRow['gender_ids'] and item['id'] in articleRow['gender_ids'] %}selected{% endif %}>
                             {{ item['gender'] }}
                         </option>
                         {% endfor %}

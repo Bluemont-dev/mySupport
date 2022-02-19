@@ -48,7 +48,13 @@ url.addEventListener('input', function(){
 // });
 
 articleTextCancelButton.addEventListener("click",function(){
-    window.open("/article/" + articleID.value,"_self");
+    if (articleID.value){
+        window.open("/article/" + articleID.value,"_self");
+    }
+    else {
+        window.open("/article/thread/","_self");
+    }
+    
 });
 
 articleTextPostButton.addEventListener("click",function(){
