@@ -1,4 +1,5 @@
 import imghdr
+from logging.config import dictConfig
 import os
 import csv
 import copy
@@ -128,7 +129,6 @@ def index():
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     dict_cur.execute("""SELECT id FROM discussions ORDER BY date_created DESC LIMIT (%s)""",[retrieveLimit])
     allDiscussionIDs = [dict(row) for row in dict_cur.fetchall()]
-    print(f"allDiscussionIDs: {allDiscussionIDs}")
     # loop thru discussions and prep each one for display
     for item in allDiscussionIDs:
         commentCount = 0
@@ -137,7 +137,7 @@ def index():
         # commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE discussionID = ?", item['id'])
         dict_cur.execute("""SELECT COUNT(*) FROM comments WHERE discussion_id = (%s)""",[item['id']])
         commentCount = [dict(row) for row in dict_cur.fetchall()]
-        discussionRow[0]['commentCount'] = commentCount[0]['COUNT(*)']
+        discussionRow[0]['commentCount'] = commentCount[0]['count']
         # get textContent from HTML for each discussion; add it to the dict
         textContent = getTextContentFromHTML(discussionRow[0]['text'])
         discussionRow[0]['textContent'] = textContent
@@ -464,7 +464,6 @@ def getArticleDetails():
     articleRow[0]['title'] = soup.h1.get_text()
     if soup.find("meta", property="og:image"):
         articleRow[0]['og_image'] = soup.find("meta", property="og:image")['content']
-    print(f"Line 401: og_image is: {articleRow[0]['og_image']}")
     if soup.find("meta", property="og:url"):
         articleRow[0]['url'] = soup.find("meta", property="og:url")['content']
     if soup.find("meta", property="og:description"):
@@ -489,7 +488,7 @@ def getArticleDetails():
         articleRow[0]['date_published'] = datePublishedTestString
     else:
         articleRow[0]['date_published'] = None
-    print(f"articleRow[0] = {articleRow[0]}")
+    # print(f"articleRow[0] = {articleRow[0]}")
     return render_template("articleThread.html", userDict = userDict, userRows = userRows, selectsDict = selectsDict, articleRow = articleRow[0], editMode = editMode)
 
 @app.route("/article/thread/", methods = ["GET","POST"])
@@ -588,7 +587,6 @@ def articleDelete(articleID):
     if senderIDList[0]['sender_id'] != int(session.get('id')):
         flash("You are not authorized to delete this article.", flashStyling("warning"))
         return redirect("/article/" + articleID)
-
     dict_cur.execute("""BEGIN""")
     try:
         # delete the article
@@ -601,19 +599,6 @@ def articleDelete(articleID):
     else:
         dict_cur.execute("""COMMIT""")
     dict_cur.close()
-
-
-    # db.execute("BEGIN TRANSACTION")
-    # try:
-    #     # delete this article from db
-    #     db.execute("DELETE FROM articles WHERE id = ?", int(articleID))
-    # except:
-    #     db.execute("ROLLBACK")
-    #     abort(500)
-    # db.execute("COMMIT")
-
-
-
     return redirect("/articles")
 
 @app.route("/articles", methods = ["GET"])
@@ -642,15 +627,17 @@ def articles():
         articleRow[0]['publishedDateTimeString'] = articleRow[0]['publishedDateTimeString'][:articleRow[0]['publishedDateTimeString'].find('-')-1]
         articleRow[0]['website'] = urlparse(articleRow[0]['url']).netloc
         allArticlesList.append(articleRow[0])
-    print(allArticlesList)
+    # print(allArticlesList)
     return render_template ("articlesView.html", userDict = userDict, allArticlesList = allArticlesList)
     # return("Here we would list 50 articles")
 
 @app.route("/discussion/<discussionID>")
 def discussion(discussionID):
     # make sure discussion exists
-    discussionRowPresence = db.execute("SELECT * FROM discussions WHERE id = ?", int(discussionID))
-    if not discussionRowPresence:
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM discussions WHERE id = %s""", [int(discussionID)])
+    discussionRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if len(discussionRowPresence) == 0:
         flash("We cannot find the discussion you're looking for.", flashStyling("warning"))
         return redirect("/discussions")
     userDict = buildUserDict()
@@ -665,14 +652,21 @@ def discussion(discussionID):
 def discussionComment(discussionID):
     # get text content from form
     commentText = request.form.get('commentTextContent')
-    db.execute("BEGIN TRANSACTION")
-    # create a new row in comments table
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""BEGIN""")
     try:
-        newCommentID = db.execute("INSERT INTO comments (senderID, text, discussionID) VALUES (?,?,?)", int(session.get('id')), commentText, int(discussionID))
-    except:
-        db.execute("ROLLBACK")
+        # create new comment
+        dict_cur.execute("""INSERT INTO comments (sender_id, text, discussion_id) VALUES (%s,%s,%s) RETURNING id""",[int(session.get('id')), commentText, int(discussionID)])
+        newCommentID = [dict(row) for row in dict_cur.fetchall()]
+        newCommentID = newCommentID[0]['id']
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    else:
+        dict_cur.execute("""COMMIT""")
+    dict_cur.close()
     # redirect to that same discussion view, jumping to the anchor of the new comment
     return redirect("/discussion/" + discussionID + "#commentItemTextDiv" + str(newCommentID))
 
@@ -682,18 +676,22 @@ def discussionComment(discussionID):
 def discussionCommentEdit(discussionID, commentID):
     # in both GET and POST, make sure the items both exist and the logged-in user is the owner of the comment being edited
     # make sure discussion exists
-    discussionRowPresence = db.execute("SELECT * FROM discussions WHERE id = ?", int(discussionID))
-    if not discussionRowPresence:
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM discussions WHERE id = %s""", [int(discussionID)])
+    discussionRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if len(discussionRowPresence) == 0:
         flash("We cannot find the discussion you're looking for.", flashStyling("warning"))
         return redirect("/")
     # make sure comment exists AND is associated with that discussion
-    commentRowPresence = db.execute("SELECT * FROM comments WHERE id = ?", int(commentID))
-    if not (commentRowPresence and commentRowPresence[0]['discussionID'] == discussionRowPresence[0]['id']):
+    dict_cur.execute("""SELECT * FROM comments WHERE id = %s""", [int(commentID)])
+    commentRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if not (len(commentRowPresence) > 0 and commentRowPresence[0]['discussion_id'] == discussionRowPresence[0]['id']):
         flash("We cannot find the comment you're looking for.", flashStyling("warning"))
         return redirect("/")
     # make sure the comment to be edited belongs to the logged-in user
-    senderIDList = db.execute("SELECT senderID FROM comments WHERE id = ?", int(commentID))
-    if senderIDList[0]['senderID'] != int(session.get('id')):
+    dict_cur.execute("""SELECT sender_id FROM comments WHERE id = %s""", [int(commentID)])
+    senderIDList = [dict(row) for row in dict_cur.fetchall()]
+    if senderIDList[0]['sender_id'] != int(session.get('id')):
         flash("You are not authorized to edit this comment.", flashStyling("warning"))
         return redirect("/discussion/" + discussionID)
     if request.method == "GET":
@@ -702,18 +700,23 @@ def discussionCommentEdit(discussionID, commentID):
         commentRows = getDiscussionCommentRowsForDisplay(discussionID)
         commentEditMode = "edit"
         commentEditID = commentID
+        dict_cur.close()
         return render_template("discussionView.html", userDict = userDict, discussionRow = discussionRows[0], commentRows = commentRows, commentEditMode = commentEditMode, commentEditID = commentEditID)
     else:
         # we have a post request
         textContent = request.form.get('commentEditTextContent')
-        db.execute("BEGIN TRANSACTION")
-        # update that row in comments table
+        dict_cur.execute("""BEGIN""")
         try:
-            db.execute("UPDATE comments SET text = ? WHERE id = ?", textContent, int(commentID))
-        except:
-            db.execute("ROLLBACK")
+            # update that row in comments table
+            dict_cur.execute("""UPDATE comments SET text = %s WHERE id = %s""", [textContent, int(commentID)])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+            dict_cur.close()
         # redirect to that same discussion view, jumping to the anchor of the updated comment
         return redirect("/discussion/" + discussionID + "#commentItemTextDiv" + str(commentID))
 
@@ -722,29 +725,37 @@ def discussionCommentEdit(discussionID, commentID):
 @email_required
 def discussionCommentDelete(discussionID, commentID):
     # make sure the items both exist and the logged-in user is the owner of the comment being deleted
+
     # make sure discussion exists
-    discussionRowPresence = db.execute("SELECT * FROM discussions WHERE id = ?", int(discussionID))
-    if not discussionRowPresence:
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM discussions WHERE id = %s""", [int(discussionID)])
+    discussionRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if len(discussionRowPresence) == 0:
         flash("We cannot find the discussion you're looking for.", flashStyling("warning"))
         return redirect("/")
     # make sure comment exists AND is associated with that discussion
-    commentRowPresence = db.execute("SELECT * FROM comments WHERE id = ?", int(commentID))
-    if not (commentRowPresence and commentRowPresence[0]['discussionID'] == discussionRowPresence[0]['id']):
+    dict_cur.execute("""SELECT * FROM comments WHERE id = %s""", [int(commentID)])
+    commentRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if not (len(commentRowPresence) > 0 and commentRowPresence[0]['discussion_id'] == discussionRowPresence[0]['id']):
         flash("We cannot find the comment you're looking for.", flashStyling("warning"))
         return redirect("/")
-    # make sure the comment to be deleted belongs to the logged-in user
-    senderIDList = db.execute("SELECT senderID FROM comments WHERE id = ?", int(commentID))
-    if senderIDList[0]['senderID'] != int(session.get('id')):
+    # make sure the comment to be edited belongs to the logged-in user
+    dict_cur.execute("""SELECT sender_id FROM comments WHERE id = %s""", [int(commentID)])
+    senderIDList = [dict(row) for row in dict_cur.fetchall()]
+    if senderIDList[0]['sender_id'] != int(session.get('id')):
         flash("You are not authorized to delete this comment.", flashStyling("warning"))
         return redirect("/discussion/" + discussionID)
-    db.execute("BEGIN TRANSACTION")
+    dict_cur.execute("""BEGIN""")
     try:
-        # delete this comment from db
-        db.execute("DELETE FROM comments WHERE id = ?", int(commentID))
-    except:
-        db.execute("ROLLBACK")
+        dict_cur.execute("""DELETE FROM comments WHERE id = %s""", [int(commentID)])
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    else:
+        dict_cur.execute("""COMMIT""")
+    dict_cur.close()
     return redirect("/discussion/" + discussionID)
 
 @app.route("/discussion/delete/<discussionID>", methods = ["GET"])
@@ -752,23 +763,30 @@ def discussionCommentDelete(discussionID, commentID):
 @email_required
 def discussionDelete(discussionID):
     # make sure discussion exists
-    discussionRowPresence = db.execute("SELECT * FROM discussions WHERE id = ?", int(discussionID))
-    if not discussionRowPresence:
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM discussions WHERE id = %s""", [int(discussionID)])
+    discussionRowPresence = [dict(row) for row in dict_cur.fetchall()]
+    if len(discussionRowPresence) == 0:
         flash("We cannot find the discussion you're looking for.", flashStyling("warning"))
         return redirect("/discussions")
     # make sure the discussion to be deleted belongs to the logged-in user
-    senderIDList = db.execute("SELECT senderID FROM discussions WHERE id = ?", int(discussionID))
-    if senderIDList[0]['senderID'] != int(session.get('id')):
+    dict_cur.execute("""SELECT sender_id FROM discussions WHERE id = %s""", [int(discussionID)])
+    senderIDList = [dict(row) for row in dict_cur.fetchall()]
+    if senderIDList[0]['sender_id'] != int(session.get('id')):
         flash("You are not authorized to delete this discussion.", flashStyling("warning"))
         return redirect("/discussion/" + discussionID)
-    db.execute("BEGIN TRANSACTION")
+
+    dict_cur.execute("""BEGIN""")
     try:
-        # delete this discussion from db
-        db.execute("DELETE FROM discussions WHERE id = ?", int(discussionID))
-    except:
-        db.execute("ROLLBACK")
+        dict_cur.execute("""DELETE FROM discussions WHERE id = %s""", [int(discussionID)])
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    else:
+        dict_cur.execute("""COMMIT""")
+    dict_cur.close()
     return redirect("/discussions")
 
 @app.route("/discussion/edit/<discussionID>", methods = ["GET","POST"])
@@ -780,13 +798,16 @@ def discussionEdit(discussionID):
         userRows = getUserRows(session.get("id"))
         selectsDict = dbSimpleDictBuilder('relationships+id+ASC','genders+id+ASC','ages+id+ASC','challenges+challenge+ASC')
         # make sure the item exists
-        discussionRowPresence = db.execute("SELECT * FROM discussions WHERE id = ?", int(discussionID))
-        if not discussionRowPresence:
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT * FROM discussions WHERE id = %s""", [int(discussionID)])
+        discussionRowPresence = [dict(row) for row in dict_cur.fetchall()]
+        if len(discussionRowPresence) == 0:
             flash("We cannot find the discussion you're looking for.", flashStyling("warning"))
             return redirect("/discussions")
         # make sure the item to be edited belongs to the logged-in user
-        senderIDList = db.execute("SELECT senderID FROM discussions WHERE id = ?", int(discussionID))
-        if senderIDList[0]['senderID'] != int(session.get('id')):
+        dict_cur.execute("""SELECT sender_id FROM discussions WHERE id = %s""", [int(discussionID)])
+        senderIDList = [dict(row) for row in dict_cur.fetchall()]
+        if senderIDList[0]['sender_id'] != int(session.get('id')):
             flash("You are not authorized to edit this content.", flashStyling("warning"))
             return redirect("/discussion/" + discussionID)
         discussionRows = getDiscussionRowsForDisplay(discussionID)
@@ -800,34 +821,54 @@ def discussionEdit(discussionID):
         # capture the content of other form values
         rawHTML = request.form.get('rawHTML')
         subject = request.form.get('subject')
-        # begin transaction
-        # update subject and text
-        # write new rows to DiscussionToChallenge, etc.
-        # close transaction
-        # redirect to the view version of the thread that was just edited
-        db.execute("BEGIN TRANSACTION")
+        passedDict = {}
+        passedDict['text'] = rawHTML
+        passedDict['subject'] = subject
+        # print(f"Passed dictionary is {passedDict}")
+        keysList = list(passedDict.keys())
+        keysString = ",".join(keysList)
+        valuesList = list(passedDict.values())
+        valuesString = ""
+        for i in range(len(valuesList)):
+            if type(valuesList[i]) == str:
+                valuesString += "'" + valuesList[i] + "'"
+            else:
+                valuesString += str(valuesList[i])
+            if i < len(valuesList)-1:
+                valuesString += ","
+        # print(f"keysString is {keysString} and valuesString is {valuesString}")
+        if len(passedDict.keys()) > 1:
+            update_str = sql.SQL("UPDATE discussions SET (%s) = (%s) WHERE id = %s")
+        else:
+            update_str = sql.SQL("UPDATE discussions SET %s = %s WHERE id = %s")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
         try:
-            # remove all entries for this discussion in DiscussionToChallenge, etc.
-            db.execute("DELETE FROM DiscussionToChallenge WHERE discussionID = ?", int(discussionID))
-            db.execute("DELETE FROM DiscussionToAge WHERE discussionID = ?", int(discussionID))
-            db.execute("DELETE FROM DiscussionToGender WHERE discussionID = ?", int(discussionID))
-            # update db record for discussion with form values
-            db.execute("UPDATE discussions SET subject = ?, text = ? WHERE id = ?", subject, rawHTML, int(discussionID))
-            # populate the other tables as needed (challenges, ages, genders)
+            # update discussion row
+            dict_cur.execute(update_str,[AsIs(keysString),AsIs(valuesString),int(discussionID)])
+            # remove all challenges, ages, genders from their discussion join tables
+            dict_cur.execute("""DELETE FROM discussion_challenge WHERE discussion_id = %s""",[int(discussionID)])
+            dict_cur.execute("""DELETE FROM discussion_age WHERE discussion_id = %s""",[int(discussionID)])
+            dict_cur.execute("""DELETE FROM discussion_gender WHERE discussion_id = %s""",[int(discussionID)])
+            # insert new challenges, ages, genders into their discussion join tables
             if len(newChallengeList) > 0:
                 for challenge in newChallengeList:
-                    db.execute("INSERT INTO DiscussionToChallenge (discussionID, challengeID) VALUES (?,?)", int(discussionID), challenge)
+                    dict_cur.execute("""INSERT INTO discussion_challenge (discussion_id, challenge_id) VALUES (%s,%s)""", [int(discussionID), challenge])
             if len(newAgeList) > 0:
                 for age in newAgeList:
-                    db.execute("INSERT INTO DiscussionToAge (discussionID, ageID) VALUES (?,?)", int(discussionID), age)
+                    dict_cur.execute("""INSERT INTO discussion_age (discussion_id, age_id) VALUES (%s,%s)""", [int(discussionID), age])
             if len(newGenderList) > 0:
                 for gender in newGenderList:
-                    db.execute("INSERT INTO DiscussionToGender (discussionID, genderID) VALUES (?,?)", int(discussionID), gender)
-        except:
-            db.execute("ROLLBACK")
+                    dict_cur.execute("""INSERT INTO discussion_gender (discussion_id, gender_id) VALUES (%s,%s)""", [int(discussionID), gender])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
-        # redirect the user to the view version of this discussion that was just created
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
+        # redirect the user to the view version of this discussion that was just edited
         return redirect("/discussion/" + discussionID)
 
 @app.route("/discussion/thread/", methods = ["GET","POST"])
@@ -856,30 +897,44 @@ def discussionThreadBlank():
         newChallengeList = request.form.getlist('challenge')
         newAgeList = request.form.getlist('age')
         newGenderList = request.form.getlist('gender')
+        passedDict = {}
         # capture the content of other form values
-        rawHTML = request.form.get('rawHTML')
-        subject = request.form.get('subject')
+        passedDict['text'] = request.form.get('rawHTML')
+        passedDict['subject'] = request.form.get('subject')
+        passedDict['sender_id'] = session.get('id')
+        # print(f"Passed dictionary is {passedDict}")
+        insert_flds = [fld_name for fld_name in passedDict.keys()]
+        # print(f"Insert fields: {insert_flds}")
+        insert_str = sql.SQL("INSERT INTO discussions ({}) VALUES ({}) RETURNING id").format(
+        sql.SQL(",").join(map(sql.Identifier, insert_flds)),
+        sql.SQL(",").join(map(sql.Placeholder, insert_flds)))
+        # print(f"Insert string is: {insert_str}")
         # begin transaction
-        db.execute("BEGIN TRANSACTION")
-        # create new discussion and capture its id
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
         try:
-            # create new discussions row
-            newID = db.execute("INSERT INTO discussions (subject, text, senderID) VALUES (?,?,?)", subject, rawHTML, session.get("id"))
-            # update db record with form values
+            # create new discussion and capture its id
+            dict_cur.execute(insert_str,passedDict)
+            newID = [dict(row) for row in dict_cur.fetchall()]
+            newID = newID[0]['id']
             # populate the other tables as needed (challenges, ages, genders)
             if len(newChallengeList) > 0:
                 for challenge in newChallengeList:
-                    db.execute("INSERT INTO DiscussionToChallenge (discussionID, challengeID) VALUES (?,?)", newID, challenge)
+                    dict_cur.execute("""INSERT INTO discussion_challenge (discussion_id, challenge_id) VALUES (%s,%s)""", [newID, challenge])
             if len(newAgeList) > 0:
                 for age in newAgeList:
-                    db.execute("INSERT INTO DiscussionToAge (discussionID, ageID) VALUES (?,?)", newID, age)
+                    dict_cur.execute("""INSERT INTO discussion_age (discussion_id, age_id) VALUES (%s,%s)""", [newID, age])
             if len(newGenderList) > 0:
                 for gender in newGenderList:
-                    db.execute("INSERT INTO DiscussionToGender (discussionID, genderID) VALUES (?,?)", newID, gender)
-        except:
-            db.execute("ROLLBACK")
+                    dict_cur.execute("""INSERT INTO discussion_gender (discussion_id, gender_id) VALUES (%s,%s)""", [newID, gender])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         # redirect the user to the view version of this discussion that was just created
         return redirect("/discussion/" + str(newID))
 
@@ -890,26 +945,33 @@ def discussions():
     allDiscussionsList = []
     commentCount = 0
     # retrieve 50 most recent discussions from db
-    allDiscussionIDs = db.execute("""
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
     SELECT id FROM discussions
-    ORDER BY dateCreated DESC
-    LIMIT ?;
-    """, retrieveLimit)
+    ORDER BY date_created DESC
+    LIMIT %s
+    """, [retrieveLimit])
+    allDiscussionIDs = [dict(row) for row in dict_cur.fetchall()]
     # print(allDiscussionIDs)
     # loop thru discussions and prep each one for display
     for item in allDiscussionIDs:
         commentCount = 0
         discussionRow = getDiscussionRowsForDisplay(item['id'])
         # count number of comments for each, add it to the dict
-        commentCount = db.execute("SELECT COUNT(*) FROM comments WHERE discussionID = ?", item['id'])
-        discussionRow[0]['commentCount'] = commentCount[0]['COUNT(*)']
+        dict_cur.execute("""SELECT COUNT(*) FROM comments WHERE discussion_id = %s""", [item['id']])
+        commentCount = [dict(row) for row in dict_cur.fetchall()]
+        discussionRow[0]['commentCount'] = commentCount[0]['count']
         # get textContent from HTML for each discussion; add it to the dict
         textContent = getTextContentFromHTML(discussionRow[0]['text'])
         discussionRow[0]['textContent'] = textContent
         # check for images in the HTML; grab code for the first one
-        imageTagCode = getFirstImageFromHTML(discussionRow[0]['text'])
+        imageTagCode = getFirstImageFromHTML(discussionRow[0]['text'])[0]
+        # get just the img src for use with the thumbnail
+        imageTagSrc = getFirstImageFromHTML(discussionRow[0]['text'])[1]
         discussionRow[0]['imageTagCode'] = imageTagCode
+        discussionRow[0]['imageTagSrc'] = imageTagSrc
         allDiscussionsList.append(discussionRow[0])
+    dict_cur.close()
     # print(allDiscussionsList)
     return render_template ("discussionsView.html", userDict = userDict, allDiscussionsList = allDiscussionsList)
 
@@ -2255,15 +2317,16 @@ def getArticleRowsForDisplay(articleID):
             WHERE article_id = %s
             GROUP BY article_id""",[row['id']])
             challenge_ids = [dict(row) for row in dict_cur.fetchall()]
-            challenge_ids = challenge_ids[0]['challenge_ids']
-            # print(f"challenge_ids to be added: {challenge_ids}")
-            row['challenge_ids'] = challenge_ids
-            # get challenges as strings and add them, comma-separated, to one big string
-            challenge_ids_string = ','.join(map(str, challenge_ids))
-            dict_cur.execute("""SELECT string_agg(challenge,',') AS my_challenges FROM challenges WHERE id IN (%s)""",[AsIs(challenge_ids_string)])
-            challenges = dict_cur.fetchone()['my_challenges']
-            # print (f"challenges to be added: {challenges}")
-            row['challenges'] = challenges
+            if len(challenge_ids) != 0:
+                challenge_ids = challenge_ids[0]['challenge_ids']
+                # print(f"challenge_ids to be added: {challenge_ids}")
+                row['challenge_ids'] = challenge_ids
+                # get challenges as strings and add them, comma-separated, to one big string
+                challenge_ids_string = ','.join(map(str, challenge_ids))
+                dict_cur.execute("""SELECT string_agg(challenge,',') AS my_challenges FROM challenges WHERE id IN (%s)""",[AsIs(challenge_ids_string)])
+                challenges = dict_cur.fetchone()['my_challenges']
+                # print (f"challenges to be added: {challenges}")
+                row['challenges'] = challenges
             # get age ids as array and add them to each row
             dict_cur.execute("""
             SELECT article_id, 
@@ -2272,15 +2335,16 @@ def getArticleRowsForDisplay(articleID):
             WHERE article_id = %s
             GROUP BY article_id""",[row['id']])
             age_ids = [dict(row) for row in dict_cur.fetchall()]
-            age_ids = age_ids[0]['age_ids']
-            # print(f"age_ids to be added: {age_ids}")
-            row['age_ids'] = age_ids
-            # get ages as strings and add them, comma-separated, to one big string
-            age_ids_string = ','.join(map(str, age_ids))
-            dict_cur.execute("""SELECT string_agg(age,',') AS my_ages FROM ages WHERE id IN (%s)""",[AsIs(age_ids_string)])
-            ages = dict_cur.fetchone()['my_ages']
-            # print (f"ages to be added: {ages}")
-            row['ages'] = ages
+            if len(age_ids) != 0:
+                age_ids = age_ids[0]['age_ids']
+                # print(f"age_ids to be added: {age_ids}")
+                row['age_ids'] = age_ids
+                # get ages as strings and add them, comma-separated, to one big string
+                age_ids_string = ','.join(map(str, age_ids))
+                dict_cur.execute("""SELECT string_agg(age,',') AS my_ages FROM ages WHERE id IN (%s)""",[AsIs(age_ids_string)])
+                ages = dict_cur.fetchone()['my_ages']
+                # print (f"ages to be added: {ages}")
+                row['ages'] = ages
             # get gender ids as array and add them to each row
             dict_cur.execute("""
             SELECT article_id, 
@@ -2289,17 +2353,18 @@ def getArticleRowsForDisplay(articleID):
             WHERE article_id = %s
             GROUP BY article_id""",[row['id']])
             gender_ids = [dict(row) for row in dict_cur.fetchall()]
-            gender_ids = gender_ids[0]['gender_ids']
-            # print(f"gender_ids to be added: {gender_ids}")
-            row['gender_ids'] = gender_ids
-            # get genders as strings and add them, comma-separated, to one big string
-            gender_ids_string = ','.join(map(str, gender_ids))
-            dict_cur.execute("""SELECT string_agg(gender,',') AS my_genders FROM genders WHERE id IN (%s)""",[AsIs(gender_ids_string)])
-            genders = dict_cur.fetchone()['my_genders']
-            # print (f"genders to be added: {genders}")
-            row['genders'] = genders
+            if len(gender_ids) != 0:
+                gender_ids = gender_ids[0]['gender_ids']
+                # print(f"gender_ids to be added: {gender_ids}")
+                row['gender_ids'] = gender_ids
+                # get genders as strings and add them, comma-separated, to one big string
+                gender_ids_string = ','.join(map(str, gender_ids))
+                dict_cur.execute("""SELECT string_agg(gender,',') AS my_genders FROM genders WHERE id IN (%s)""",[AsIs(gender_ids_string)])
+                genders = dict_cur.fetchone()['my_genders']
+                # print (f"genders to be added: {genders}")
+                row['genders'] = genders
         # print("Enhanced article rows:")
-        print(articleRows)
+        # print(articleRows)
     except Exception as error:
         print ("Oops! An exception has occurred:", error)
         print ("Exception TYPE:", type(error))
@@ -2333,35 +2398,91 @@ def getArticleCommentRowsForDisplay(articleID):
 
 def getDiscussionRowsForDisplay(discussionID):
     dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    dict_cur.execute("""
-        SELECT
-        discussions.id,
-        discussions.sender_id,
-        discussions.subject,
-        discussions.text,
-        discussions.date_created,
-        users.first_name,
-        users.last_name,
-        users.username,
-        users.profile_image,
-        users.display_name_option,
-        string_agg(DISTINCT challenges.id::text) AS challenge_ids,
-        string_agg(DISTINCT challenges.challenge::text) AS challenges,
-        string_agg(DISTINCT ages.id::text) AS age_ids,
-        string_agg(DISTINCT ages.age::text) AS ages,
-        string_agg(DISTINCT genders.id::text) AS gender_ids,
-        string_agg(DISTINCT genders.gender::text) AS genders
-        FROM discussions
-        LEFT JOIN discussion_challenge on discussions.id = discussion_challenge.discussion_id
-        LEFT JOIN challenges on challenges.id = discussion_challenge.challenge_id
-        LEFT JOIN discussion_age on discussions.id = discussion_age.discussion_id
-        LEFT JOIN ages on ages.id = discussion_age.age_id
-        LEFT JOIN discussion_gender on discussions.id = discussion_gender.discussion_id
-        LEFT JOIN genders on genders.id = discussion_gender.gender_id
-        LEFT JOIN users on users.id = discussions.sender_id
-        WHERE discussions.id = (%s)
-    """, [int(discussionID)])
-    discussionRows = [dict(row) for row in dict_cur.fetchall()]
+    try:
+        dict_cur.execute("""
+            SELECT
+            discussions.id,
+            discussions.sender_id,
+            discussions.subject,
+            discussions.text,
+            discussions.date_created,
+            users.first_name,
+            users.last_name,
+            users.username,
+            users.profile_image,
+            users.display_name_option
+            FROM discussions
+            LEFT JOIN discussion_challenge on discussions.id = discussion_challenge.discussion_id
+            LEFT JOIN challenges on challenges.id = discussion_challenge.challenge_id
+            LEFT JOIN discussion_age on discussions.id = discussion_age.discussion_id
+            LEFT JOIN ages on ages.id = discussion_age.age_id
+            LEFT JOIN discussion_gender on discussions.id = discussion_gender.discussion_id
+            LEFT JOIN genders on genders.id = discussion_gender.gender_id
+            LEFT JOIN users on users.id = discussions.sender_id
+            WHERE discussions.id = (%s)
+        """, [discussionID])
+        discussionRows = [dict(row) for row in dict_cur.fetchall()]
+        # print(f"Records retrieved: {len(discussionRows)}")
+        # print("Preliminary discussion rows:")
+        # print(discussionRows)
+        for row in discussionRows:
+            # get challenge ids as array and add them to each row
+            dict_cur.execute("""
+            SELECT discussion_id, 
+            array_agg(challenge_id) AS challenge_ids
+            FROM discussion_challenge
+            WHERE discussion_id = %s
+            GROUP BY discussion_id""",[row['id']])
+            challenge_ids = [dict(row) for row in dict_cur.fetchall()]
+            if len(challenge_ids) != 0:
+                challenge_ids = challenge_ids[0]['challenge_ids']
+                row['challenge_ids'] = challenge_ids
+                # get challenges as strings and add them, comma-separated, to one big string
+                challenge_ids_string = ','.join(map(str, challenge_ids))
+                dict_cur.execute("""SELECT string_agg(challenge,',') AS my_challenges FROM challenges WHERE id IN (%s)""",[AsIs(challenge_ids_string)])
+                challenges = dict_cur.fetchone()['my_challenges']
+                row['challenges'] = challenges
+            # get age ids as array and add them to each row
+            dict_cur.execute("""
+            SELECT discussion_id, 
+            array_agg(age_id) AS age_ids
+            FROM discussion_age
+            WHERE discussion_id = %s
+            GROUP BY discussion_id""",[row['id']])
+            age_ids = [dict(row) for row in dict_cur.fetchall()]
+            if len(age_ids) != 0:
+                age_ids = age_ids[0]['age_ids']
+                row['age_ids'] = age_ids
+                # get ages as strings and add them, comma-separated, to one big string
+                age_ids_string = ','.join(map(str, age_ids))
+                dict_cur.execute("""SELECT string_agg(age,',') AS my_ages FROM ages WHERE id IN (%s)""",[AsIs(age_ids_string)])
+                ages = dict_cur.fetchone()['my_ages']
+                row['ages'] = ages
+            # get gender ids as array and add them to each row
+            dict_cur.execute("""
+            SELECT discussion_id, 
+            array_agg(gender_id) AS gender_ids
+            FROM discussion_gender
+            WHERE discussion_id = %s
+            GROUP BY discussion_id""",[row['id']])
+            gender_ids = [dict(row) for row in dict_cur.fetchall()]
+            if len(gender_ids) != 0:
+                gender_ids = gender_ids[0]['gender_ids']
+                row['gender_ids'] = gender_ids
+                # get genders as strings and add them, comma-separated, to one big string
+                gender_ids_string = ','.join(map(str, gender_ids))
+                dict_cur.execute("""SELECT string_agg(gender,',') AS my_genders FROM genders WHERE id IN (%s)""",[AsIs(gender_ids_string)])
+                genders = dict_cur.fetchone()['my_genders']
+                row['genders'] = genders
+        # print("Enhanced discussion rows:")
+        # print(discussionRows)
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
+        abort(500)
+    else:
+        dict_cur.execute("""COMMIT""")
     dict_cur.close()
     discussionRows[0]['displayName'] = buildDisplayName(discussionRows[0])
     discussionRows[0]['dateTimeString'] = buildDateTimeString(discussionRows[0]['date_created'])
@@ -2394,7 +2515,12 @@ def getFirstImageFromHTML(HTMLstring):
     # <a class="sister" href="http://example.com/elsie" id="link1">Elsie</a>
     soup = BeautifulSoup(HTMLstring, 'html.parser')
     imageTagCode = soup.img
-    return imageTagCode
+    if imageTagCode:
+        imageTagSrc = soup.img['src']
+    else:
+        imageTagSrc = None
+    imageTagList = [imageTagCode,imageTagSrc]
+    return imageTagList
 
 def checkDateFormat (string):
     # parse a string to see if the first 10 characters are a valid date informat YYYY-MM-DD

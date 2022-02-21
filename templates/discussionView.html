@@ -18,10 +18,10 @@
         </div>
         <div class = "d-flex justify-content-start" id="discussionMetaStuff">
             <div class = "thumbnailDiv">
-               <img class = "thumbnailImage" alt={{ discussionRow['displayName'] }} src={{ "/static/avatars/" + discussionRow['profileImage'] }}>
+               <img class = "thumbnailImage" alt="{{ discussionRow['displayName'] }}" src="{{ '/static/avatars/' + discussionRow['profile_image'] }}">
             </div>
             <div>
-                <strong><a href="{{ "/person/" + discussionRow['username'] }}">{{ discussionRow['displayName'] }}</strong></a><br>
+                <strong><a href="{{ '/person/' + discussionRow['username'] }}">{{ discussionRow['displayName'] }}</strong></a><br>
                 {{ discussionRow['dateTimeString'] }}
             </div>
         </div>
@@ -32,10 +32,10 @@
             <div id = "discussionText">
                 {{ discussionRow['text']|safe }}
             </div>
-            {% if userDict['id'] == discussionRow['senderID'] %}
+            {% if userDict['id'] == discussionRow['sender_id'] %}
             <div id="discussionEditButtons" class="mt-3">
-                <a href={{ "/discussion/edit/" + discussionRow['id']|string }} class="btn btn-large btn-primary mx-3"><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                <a href="#" onclick="javascript:discussionDeletePrompt(this.id);return false;" class="btn btn-large btn-secondary mx-3" id={{ "discussionDeleteButton" + discussionRow['id']|string }}><i class="fas fa-trash-alt"></i>&nbsp;Delete</a>
+                <a href="{{ '/discussion/edit/' + discussionRow['id']|string }}" class="btn btn-large btn-primary mx-3"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                <a href="#" onclick="javascript:discussionDeletePrompt(this.id);return false;" class="btn btn-large btn-secondary mx-3" id="{{ 'discussionDeleteButton' + discussionRow['id']|string }}"><i class="fas fa-trash-alt"></i>&nbsp;Delete</a>
             </div>
             {% endif %}
         </div>
@@ -45,15 +45,15 @@
                 {% for row in commentRows %}
                 <div class="d-flex align-items-top commentItemRow mb-4">
                         <div class="thumbnailDiv d-flex justify-content-center">
-                            <img class = "thumbnailImage" alt={{ row["displayName"] }} src={{ "/static/avatars/" + row["profileImage"] }}>
+                            <img class = "thumbnailImage" alt="{{ row['displayName'] }}" src="{{ '/static/avatars/' + row['profile_image'] }}">
                         </div>
                         <div>
-                            <div class="commentItemTextDiv" id={{ 'commentItemTextDiv' + row['id']|string}} {% if commentEditMode == 'edit' and commentEditID == row['id']|string %}contenteditable = 'true'{% endif %}>
-                                {% if commentEditMode == 'edit' and userDict['id'] and (userDict['id'] == row['senderID']) %}
+                            <div class="commentItemTextDiv" id="{{ 'commentItemTextDiv' + row['id']|string}}" {% if commentEditMode == 'edit' and commentEditID == row['id']|string %}contenteditable = 'true'{% endif %}>
+                                {% if commentEditMode == 'edit' and userDict['id'] and (userDict['id'] == row['sender_id']) %}
                                     {{ row['text'] }}
                                 {% else %}
                                     <p>
-                                    <strong><a href="{{ "/person/" + row['username'] }}">{{ row['displayName'] }}</a></strong><br>
+                                    <strong><a href="{{ '/person/' + row['username'] }}">{{ row['displayName'] }}</a></strong><br>
                                     {{ row['text'] }}
                                     </p>
                                 {% endif %}
@@ -62,22 +62,22 @@
                                 <small>{{ row['dateTimeString'] }}</small>
                             </div>
                         </div>
-                        {% if userDict['id'] and (userDict['id'] == row['senderID']) %}
-                        <div class="col-lg-2 d-flex justify-content-center commentEditButtons" id={{ 'commentEditPair' + row['id']|string }}>
+                        {% if userDict['id'] and (userDict['id'] == row['sender_id']) %}
+                        <div class="col-lg-2 d-flex justify-content-center commentEditButtons" id="{{ 'commentEditPair' + row['id']|string }}">
                             {% if commentEditMode == 'create' %}
                             <div>
-                                <button type="button" class="btn btn-sm btn-secondary mx-1 commentEditButton" id={{ 'commentEditButton' + row['id']|string}}><i class="fas fa-pencil-alt"></i>&nbspEdit</button>
-                                <button type="button" class="btn btn-sm btn-danger mx-1 commentDeleteButton" id={{ 'commentDeleteButton' + row['id']|string}}><i class="fas fa-trash-alt"></i>&nbspDelete</button>
+                                <button type="button" class="btn btn-sm btn-secondary mx-1 commentEditButton" id="{{ 'commentEditButton' + row['id']|string}}"><i class="fas fa-pencil-alt"></i>&nbspEdit</button>
+                                <button type="button" class="btn btn-sm btn-danger mx-1 commentDeleteButton" id="{{ 'commentDeleteButton' + row['id']|string}}"><i class="fas fa-trash-alt"></i>&nbspDelete</button>
                             </div>
                             {% endif %}
                             {% if commentEditMode == 'edit' and commentEditID == row['id']|string %}
-                                <form action={{ '/discussion/' + discussionRow['id']|string + '/comment/' + row['id']|string + '/edit' }} method="POST" name="commentEditForm" id="commentEditForm">
+                                <form action="{{ '/discussion/' + discussionRow['id']|string + '/comment/' + row['id']|string + '/edit' }}" method="POST" name="commentEditForm" id="commentEditForm">
                                     <input type="hidden" name="commentEditTextContent" id="commentEditTextContent" value="">
                                     <input type="hidden" name="commentEditMode" id="commentEditMode" value="edit">
-                                    <input type="hidden" name="commentEditID" id="commentEditID" value={{ row['id']|string}} >
-                                    <div id={{ 'commentSavePair' + row['id']|string }}>
-                                        <a href={{ '/discussion/' + discussionRow['id']|string + "#commentItemTextDiv" + commentEditID }} type="button" class="btn btn-sm btn-secondary mx-1 commentEditCancelButton" id={{ 'commentEditCancelButton' + row['id']|string}}><i class="fas fa-window-close"></i>&nbspCancel</a>
-                                        <button type="button" class="btn btn-sm btn-danger mx-1 commentEditSaveButton" id={{ 'commentEditSaveButton' + row['id']|string}}><i class="fas fa-save"></i>&nbspSave</button>
+                                    <input type="hidden" name="commentEditID" id="commentEditID" value="{{ row['id']|string}}" >
+                                    <div id="{{ 'commentSavePair' + row['id']|string }}">
+                                        <a href="{{ '/discussion/' + discussionRow['id']|string + '#commentItemTextDiv' + commentEditID }}" type="button" class="btn btn-sm btn-secondary mx-1 commentEditCancelButton" id="{{ 'commentEditCancelButton' + row['id']|string}}"><i class="fas fa-window-close"></i>&nbspCancel</a>
+                                        <button type="button" class="btn btn-sm btn-danger mx-1 commentEditSaveButton" id="{{ 'commentEditSaveButton' + row['id']|string}}"><i class="fas fa-save"></i>&nbspSave</button>
                                     </div>
                                 </form>
                             {% endif %}
@@ -88,13 +88,13 @@
             {% endif %}
 
             {% if userDict['id'] %}
-            <form action={{ '/discussion/comment/' + discussionRow['id']|string }} method="POST" name="commentEntryForm" id="commentEntryForm">
+            <form action="{{ '/discussion/comment/' + discussionRow['id']|string }}" method="POST" name="commentEntryForm" id="commentEntryForm">
             <input type="hidden" name="commentTextContent" id="commentTextContent" value="">
             <input type="hidden" name="editMode" id="editMode" value="create">
-            <input type="hidden" name="discussionID" id="discussionID" value={{ discussionRow['id']|string }}>
+            <input type="hidden" name="discussionID" id="discussionID" value="{{ discussionRow['id']|string }}">
             <div class="row d-flex align-items-center" id="commentEntryRow">
                     <div class="thumbnailDiv col-lg-1 d-flex justify-content-center">
-                        <img class = "thumbnailImage" alt={{ userDict["displayName"] }} src={{ "/static/avatars/" + userDict["profileImage"] }}>
+                        <img class = "thumbnailImage" alt="{{ userDict['displayName'] }}" src="{{ '/static/avatars/' + userDict['profileImage'] }}">
                     </div>
                     <div class="col">
                         <div id="commentTextEntryDiv" contenteditable>

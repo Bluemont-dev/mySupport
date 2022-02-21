@@ -8,6 +8,10 @@
     border-radius: 50%;
 }
 
+.thumbnailSquareDiv img {
+    max-height: 50px;
+}
+
 .discussionMetaStuff div {
     margin: 10px;
 }

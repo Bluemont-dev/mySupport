@@ -51,7 +51,12 @@ for (var i = 0; i < wysiwygButtonsAll.length; i++){
 }
 
 discussionTextCancelButton.addEventListener("click",function(){
-    window.open("/discussion/" + discussionID.value,"_self");
+    if (discussionID.value){
+        window.open("/discussion/" + discussionID.value,"_self");
+    }
+    else {
+        window.open("/discussion/thread/","_self");
+    }
 });
 
 discussionTextPostButton.addEventListener("click",function(){

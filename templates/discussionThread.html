@@ -29,13 +29,13 @@
         <form action="/discussion/thread/" method="POST" id="discussionThreadForm" name="discussionThreadForm">
             <input type="hidden" name="rawHTML" id="rawHTML" value="">
             <input type="hidden" name="editMode" id="editMode" value='{{ editMode }}'>
-            <input type="hidden" name="discussionID" id="discussionID" value='{{ discussionRow['id'] }}'>
+            <input type="hidden" name="discussionID" id="discussionID" value="{{ discussionRow['id'] }}">
             <div class="row">
                 <div class="col-lg-7">
                     <!--first column of this row is for composition of discussion-->
                     <label for="subject" class="form-label">Subject:</label>
                     {% if editMode == "edit" %}
-                        <input type="text" class="form-control" id="subject" name="subject" size="50" autocomplete="off" value='{{ discussionRow['subject'] }}'>
+                        <input type="text" class="form-control" id="subject" name="subject" size="50" autocomplete="off" value="{{ discussionRow['subject'] }}">
                     {% else %}
                         <input type="text" class="form-control" id="subject" name="subject" size="50" autocomplete="off">
                     {% endif %}
@@ -72,7 +72,7 @@
                       <label for="challenge" class="form-label">living with: <em>(choose all that apply)</em></label>
                       <select class="form-select" id="challenge" name="challenge" multiple size="4">
                         {% for item in selectsDict['challenges'] %}
-                        <option value="{{ item['id'] }}" {% if discussionRow['challenge_ids'] and item['id']|string in discussionRow['challenge_ids'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if discussionRow['challenge_ids'] and item['id'] in discussionRow['challenge_ids'] %}selected{% endif %}>
                             {{ item['challenge'] }}
                         </option>
                         {% endfor %}
@@ -82,7 +82,7 @@
                       <label for="age" class="form-label">whose age is:  <em>(choose all that apply)</em></label>
                       <select class="form-select" id="age" name="age" multiple size="4">
                         {% for item in selectsDict['ages'] %}
-                        <option value="{{ item['id'] }}" {% if discussionRow['age_ids'] and item['id']|string in discussionRow['age_ids'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if discussionRow['age_ids'] and item['id'] in discussionRow['age_ids'] %}selected{% endif %}>
                             {{ item['age'] }}
                         </option>
                         {% endfor %}
@@ -92,7 +92,7 @@
                       <label for="gender" class="form-label">whose gender is:  <em>(choose all that apply)</em></label>
                       <select class="form-select" id="gender" name="gender" multiple size="4">
                         {% for item in selectsDict['genders'] %}
-                        <option value="{{ item['id'] }}" {% if discussionRow['gender_ids'] and item['id']|string in discussionRow['gender_ids'] %}selected{% endif %}>
+                        <option value="{{ item['id'] }}" {% if discussionRow['gender_ids'] and item['id'] in discussionRow['gender_ids'] %}selected{% endif %}>
                             {{ item['gender'] }}
                         </option>
                         {% endfor %}
