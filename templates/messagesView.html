@@ -28,7 +28,7 @@
                     {% endif %}
                 </div>
                 <div  class="thumbnailDiv col-lg-1">
-                    <img class = "thumbnailImage" alt={{ row['displayName'] }} src={{ "/static/avatars/" + row['profileImage'] }}>
+                    <img class = "thumbnailImage" alt="{{ row['displayName'] }}" src="{{ '/static/avatars/' + row['profileImage'] }}">
                 </div>
                 <div class="col-lg-5">
                     <p><strong>{{ row['displayName'] }}</strong></p>
@@ -47,10 +47,14 @@
                 </div>
                 <div class = "col-lg-3">
                     <p>{{ row['dateTimeString'] }}</p>
-                    <a href={{'/messages/thread/' + row['allRecipientsInts'] }} type="button" class="btn btn-sm btn-outline-primary">Read more / Reply</a>
+                    <a href="{{'/messages/thread/' + row['allRecipientsInts'] }}" type="button" class="btn btn-sm btn-outline-primary">Read more / Reply</a>
                 </div>
             </div>
             {% endfor %}
+        {% else %}
+            <div class="my-4">
+                <em>No messages available to read.</em>
+            </div>
         {% endif %}
     </div>
     <!--end messageThread-->

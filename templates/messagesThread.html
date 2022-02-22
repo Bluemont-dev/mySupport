@@ -18,8 +18,8 @@
         </div>
         <div class="d-flex justify-content-left mt-4">
             <form action="/messages/thread/" method="POST" id="messagesThreadForm" name="messagesThreadForm">
-                <input type="hidden" name="recipientsCSV" value={{ recipients }} >
-                <input type="hidden" name="currentUserID" value={{ userDict['id'] }} >
+                <input type="hidden" name="recipientsCSV" value="{{ recipients }}" >
+                <input type="hidden" name="currentUserID" value="{{ userDict['id'] }}" >
                 <div class="mb-4">
                   <label for="name" class="form-label">Begin typing a person's name:</label>
                   <input type="text" class="form-control" id="name" name="name" size="30" placeholder="You may add up to 9 people" autocomplete="off">
@@ -28,7 +28,7 @@
                 </div>
                 <div id="messageRecipientsList" class="mb-4">
                     {% for row in peopleRows %}
-                        <span class="badge rounded-pill bg-primary" id={{ "namePill" + row['id']|string }}>{{ row['displayName'] }}&nbsp;<i class="fas fa-window-close"></i></span>
+                        <span class="badge rounded-pill bg-primary" id="{{ 'namePill' + row['id']|string }}">{{ row['displayName'] }}&nbsp;<i class="fas fa-window-close"></i></span>
                     {% endfor %}
                 </div>
         </div>
@@ -38,7 +38,7 @@
                 {% for row in threadRows %}
                 <div class="row mb-1 p-1 {{ loop.cycle('odd', 'even') }}">
                     <div  class="thumbnailDiv col-md-auto mx-auto d-flex justify-content-left">
-                        <img class = "thumbnailImage" alt={{ row['displayName'] }} src={{ "/static/avatars/" + row['profileImage'] }}>
+                        <img class = "thumbnailImage" alt="{{ row['displayName'] }}" src="{{ '/static/avatars/' + row['profileImage'] }}">
                     </div>
                     <div class="col">
                         <p><strong>{{ row['displayName'] }}</strong> / <small>{{ row['dateTimeString'] }}</small></p>

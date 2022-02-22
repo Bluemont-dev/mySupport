@@ -28,11 +28,11 @@ messagesThreadForm.name.addEventListener('keyup', async function(e){
             for (let i = 0; i < nameRows.length; i++){
                 masterString = "";
                 rawHTML = "";
-                if (nameRows[i].firstName != "" && nameRows[i].firstName != null){
-                    masterString += nameRows[i].firstName + " ";
+                if (nameRows[i].first_name != "" && nameRows[i].first_name != null){
+                    masterString += nameRows[i].first_name + " ";
                 }
-                if (nameRows[i].lastName != "" && nameRows[i].lastName != null){
-                    masterString += nameRows[i].lastName + " ";
+                if (nameRows[i].last_name != "" && nameRows[i].last_name != null){
+                    masterString += nameRows[i].last_name + " ";
                 }
                 if (masterString.length > 0){
                     masterString += "/ ";

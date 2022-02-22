@@ -1,3 +1,4 @@
+from calendar import c
 import imghdr
 from logging.config import dictConfig
 import os
@@ -1048,7 +1049,10 @@ def error():
 @login_required
 @email_required
 def messagesPreload(string):
-    nameRows = db.execute("SELECT DISTINCT id, firstName, lastName, username FROM users WHERE firstName LIKE ? OR lastName LIKE ? OR username LIKE ? ORDER BY firstName ASC", string + '%', string + '%', string + '%')
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT DISTINCT id, first_name, last_name, username FROM users WHERE first_name ILIKE %s OR last_name ILIKE %s OR username ILIKE %s ORDER BY first_name ASC""", [string + '%', string + '%', string + '%'])
+    nameRows = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
     return jsonify(nameRows)
 
 @app.route("/messages/view")
@@ -1061,14 +1065,17 @@ def messagesView():
     # retrieve unread messages for this user, limit 20; include the recipientID minus the userID so we can link to the thread
     # if length of resulting rows is less than 20, retrieve read messages for this user, limit 20 minus count
     # messageViewList = db.execute("SELECT messageID FROM MessageToRecipient WHERE recipientID = ? AND read = 0 LIMIT ? ORDER BY ")
-    threadRows = db.execute("""
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""
     SELECT * FROM messages
-    LEFT JOIN MessageToRecipient on messages.id = MessageToRecipient.messageID
-    WHERE MessageToRecipient.recipientID = ?
-    ORDER BY MessageToRecipient.read ASC, messages.dateCreated DESC
-    LIMIT ?;
-    """, int(session.get("id")), retrieveLimit)
-    # loop through senders and derive their displayName, profileImage, etc. or sending to the template
+    LEFT JOIN message_recipient on messages.id = message_recipient.message_id
+    WHERE message_recipient.recipient_id = %s
+    ORDER BY message_recipient.read ASC, messages.date_created DESC
+    LIMIT %s;
+    """, [int(session.get("id")), retrieveLimit])
+    threadRows = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
+    # loop through senders and derive their displayName, profile_image, etc. for sending to the template
     superMessageList = messagePrepForDisplay(threadRows, True)
     # print(f"superMessageList = {superMessageList}")
     return render_template("messagesView.html", userDict = userDict, userRows = userRows, superMessageList = superMessageList)
@@ -1096,7 +1103,9 @@ def messagesThread(recipients):
             dbSelectCommand += " OR id = " + item
         else:
             dbSelectCommand += "id = " + item
-    peopleRows = db.execute(dbSelectCommand)
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute(dbSelectCommand)
+    peopleRows = [dict(row) for row in dict_cur.fetchall()]
     for row in peopleRows:
         personDisplayName = buildDisplayName(row)
         row['displayName'] = personDisplayName
@@ -1109,20 +1118,23 @@ def messagesThread(recipients):
     # print(threadArrayAll)
     # execute query string, return result as threadRows
     threadRows = processMessageThread(threadArrayAll)
-    # go thru threadrows and update the "read" column value to 1 for each of the user's messages in MessageToRecipient
-    db.execute("BEGIN TRANSACTION")
+    # go thru threadrows and update the "read" column value to true for each of the user's messages in message_recipient
+    dict_cur.execute("""BEGIN""")
     try:
         for item in threadRows:
-            db.execute("UPDATE MessageToRecipient SET read = 1 WHERE messageID = ? AND recipientID = ?", item['id'], int(session.get("id")))
-    except:
-        db.execute("ROLLBACK")
+            dict_cur.execute("""UPDATE message_recipient SET read = 'true' WHERE message_id = %s AND recipient_id = %s""", [item['id'], int(session.get("id"))])
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
+        dict_cur.execute("""ROLLBACK""")
         abort(500)
-    db.execute("COMMIT")
+    else:
+        dict_cur.execute("""COMMIT""")
+    dict_cur.close()
     if ajaxMode:
         return jsonify(threadRows)
     else:
         return render_template("messagesThread.html", userDict = userDict, userRows = userRows, threadRows = threadRows, recipients = recipients, peopleRows = peopleRows)
-
 
 @app.route("/messages/thread/", methods = ["GET","POST"])
 @login_required
@@ -1145,18 +1157,25 @@ def messagesThreadBlank():
             flash("You can't send a message to yourself. At least not on this website. Please try again.", flashStyling("danger"))
             return redirect('/messages/thread/')
         # write a new row to message table, and get the newly created id
-        # for each recipient, write a new row to MessageToRecipient
-        db.execute("BEGIN TRANSACTION")
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # for each recipient, write a new row to message_recipient
+        dict_cur.execute("""BEGIN""")
         try:
             # create new messages row with data from the form
-            newID = db.execute("INSERT INTO messages (senderID, text) VALUES (?,?)", session.get("id"), request.form.get('messageText'))
+            dict_cur.execute("""INSERT INTO messages (sender_id, text) VALUES (%s,%s) RETURNING id""", [session.get("id"), request.form.get('messageText')])
+            newID = [dict(row) for row in dict_cur.fetchall()]
+            newID = newID[0]['id']
             # loop through recipients list and add rows to MessageToRecipient table
             for item in recipientsList:
-                db.execute("INSERT INTO MessageToRecipient (messageID, recipientID) VALUES (?,?)", newID, int(item))
-        except:
-            db.execute("ROLLBACK")
+                dict_cur.execute("""INSERT INTO message_recipient (message_id, recipient_id) VALUES (%s,%s)""", [newID, int(item)])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
             abort(500)
-        db.execute("COMMIT")
+        else:
+            dict_cur.execute("""COMMIT""")
+        dict_cur.close()
         # return the user to the same thread, with the newly added message displayed (hopefully!)
         return redirect('/messages/thread/' + request.form.get('recipientsCSV'))
 
@@ -2238,7 +2257,8 @@ def messagePrepForDisplay(rows,condense):
         profileImage = userRow[0]['profile_image']
         item['displayName'] = displayName
         item['profileImage'] = profileImage
-        item['dateTime'] = datetime.fromisoformat(item['date_created'])
+        # item['dateTime'] = datetime.fromisoformat(str(item['date_created']))
+        item['dateTime'] = item['date_created']
         item['dateTimeString'] = buildDateTimeString(item['date_created'])
     # print(f"rows = {rows}")
     dict_cur.close()
