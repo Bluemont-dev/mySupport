@@ -14,21 +14,21 @@
     <div class="row">
         <div id="thumbnailDiv" class="col-md-3 mx-auto d-flex justify-content-center">
             <figure id = "thumbnailFigure">
-                <img id = "thumbnailImage" alt={{ personDisplayName }} src={{ "/static/avatars/" + personRows[0]['profileImage'] }}>
+                <img id = "thumbnailImage" alt={{ personDisplayName }} src="{{ '/static/avatars/' + personRows[0]['profile_image'] }}">
             </figure>
         </div>
         <div class="col-md-9">
             <h1>
-              {% if personRows[0]['firstName'] %}
-                  {{personRows[0]['firstName']}}
+              {% if personRows[0]['first_name'] %}
+                  {{personRows[0]['first_name']}}
               {% endif %}
-              {% if personRows[0]['firstName'] and personRows[0]['lastName'] %}
+              {% if personRows[0]['first_name'] and personRows[0]['last_name'] %}
 
               {% endif %}
-              {% if personRows[0]['lastName'] %}
-                  {{personRows[0]['lastName']}}
+              {% if personRows[0]['last_name'] %}
+                  {{personRows[0]['last_name']}}
               {% endif %}
-              {% if (personRows[0]['firstName'] or personRows[0]['lastName']) %}
+              {% if (personRows[0]['first_name'] or personRows[0]['last_name']) %}
                   /
               {% endif %}
                {{ personRows[0]['username'] }}
@@ -47,11 +47,11 @@
 
                 {% if personRows[0]['state'] %}{{ personRows[0]['state'] }}{% endif %}
             </p>
-             {% if personRows[0]['messagesAllowFrom'] != 'none' and userDict['id'] != personRows[0]['id'] %}
+             {% if personRows[0]['messages_allow_from'] != 'none' and userDict['id'] != personRows[0]['id'] %}
                 <p>
-                    <a href={{ '/messages/thread/' + personRows[0]['id']|string }} id="personMessageButton" class="btn btn-sm btn-success mx-3">Send a message</a>
+                    <a href="{{ '/messages/thread/' + personRows[0]['id']|string }}" id="personMessageButton" class="btn btn-sm btn-success mx-3">Send a message</a>
                 </p>
-                {% if personRows[0]['messagesAllowFrom'] != 'all' %}<em>Note: {{ personDisplayName }} is limiting the users who can send them messages.</em>{% endif %}
+                {% if personRows[0]['messages_allow_from'] != 'all' %}<em>Note: {{ personDisplayName }} is limiting the users who can send them messages.</em>{% endif %}
              {% endif %}
 
         </div>

@@ -1023,7 +1023,9 @@ def emailVerify(token):
     dict_cur.execute("""BEGIN""")
     try:
         dict_cur.execute("""UPDATE users SET email_confirmed = TRUE WHERE email = (%s)""", [email])
-    except:
+    except Exception as error:
+        print ("Oops! An exception has occurred:", error)
+        print ("Exception TYPE:", type(error))
         dict_cur.execute("""ROLLBACK""")
         abort(500)
     dict_cur.execute("COMMIT")
@@ -1199,36 +1201,36 @@ def people():
                 queryDict[item] = argsDict[item]
         # print(f"rowCountDict is: {rowCountDict}")
         # print(f"queryDict is: {queryDict}")
-    # translate request.args into db.execute language
-    joinString = "LEFT JOIN LovedOnes on LovedOnes.userID = users.id "
+    # translate request.args into dict_cur.execute language
+    joinString = "LEFT OUTER JOIN loved_ones on loved_ones.user_id = users.id "
     whereString = ""
     gotLovedOnes = False
     if len(queryDict) > 0:
         whereString += " WHERE "
         if 'relationship' in queryDict and queryDict['relationship'] != "":
             gotLovedOnes = True
-            joinString += "LEFT JOIN relationships on relationships.id = LovedOnes.relationshipID "
+            joinString += "LEFT OUTER JOIN relationships on relationships.id = loved_ones.relationship_id "
             if " = " in whereString:
                 whereString += " and "
-            whereString += "LovedOnes.relationshipID = " + queryDict['relationship']
+            whereString += "loved_ones.relationship_id = " + queryDict['relationship']
         if 'challenge' in queryDict and queryDict['challenge'] != "":
             gotLovedOnes = True
-            joinString += "LEFT JOIN LovedOneToChallenge on LovedOneToChallenge.lovedOneID = LovedOnes.id LEFT JOIN challenges on challenges.id = LovedOneToChallenge.challengeID "
+            joinString += "LEFT OUTER JOIN loved_one_challenge on loved_one_challenge.loved_one_id = loved_ones.id LEFT OUTER JOIN challenges on challenges.id = loved_one_challenge.challenge_id "
             if " = " in whereString:
                 whereString += " and "
-            whereString += "LovedOneToChallenge.challengeID = " + queryDict['challenge']
+            whereString += "loved_one_challenge.challenge_id = " + queryDict['challenge']
         if 'age' in queryDict and queryDict['age'] != "":
             gotLovedOnes = True
-            joinString += "LEFT JOIN ages on ages.id = LovedOnes.ageID "
+            joinString += "LEFT OUTER JOIN ages on ages.id = loved_ones.age_id "
             if " = " in whereString:
                 whereString += " and "
-            whereString += "LovedOnes.ageID = " + queryDict['age']
+            whereString += "loved_ones.age_id = " + queryDict['age']
         if 'gender' in queryDict and queryDict['gender'] != "":
             gotLovedOnes = True
-            joinString += "LEFT JOIN genders on genders.id = LovedOnes.genderID "
+            joinString += "LEFT OUTER JOIN genders on genders.id = loved_ones.gender_id "
             if " = " in whereString:
                 whereString += " and "
-            whereString += "LovedOnes.genderID = " + queryDict['gender']
+            whereString += "loved_ones.gender_id = " + queryDict['gender']
         if 'state' in queryDict and queryDict['state'] != "":
             if " = " in whereString:
                 whereString += " and "
@@ -1244,7 +1246,7 @@ def people():
         if 'name' in queryDict and queryDict['name'] != "":
             if " = " in whereString:
                 whereString += " and "
-            whereString += "(users.firstName LIKE '%" + queryDict['name'] + "%' or users.lastName LIKE '%" + queryDict['name'] + "%' or users.username LIKE '%" + queryDict['name'] + "%')"
+            whereString += "(users.first_name ILIKE '%" + queryDict['name'] + "%' or users.last_name ILIKE '%" + queryDict['name'] + "%' or users.username ILIKE '%" + queryDict['name'] + "%')"
     if gotLovedOnes == True:
         dbSelectCommand += joinString
     dbSelectCommand += whereString
@@ -1257,7 +1259,10 @@ def people():
     if 'LIMIT' not in dbSelectCommand:
         dbSelectCommand += " LIMIT " + defaultLimit
     # print(f"dbSelectCommand: {dbSelectCommand}")
-    peopleRows = db.execute(dbSelectCommand)
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute(dbSelectCommand)
+    peopleRows = [dict(row) for row in dict_cur.fetchall()]
+    dict_cur.close()
     for row in peopleRows:
         personDisplayName = buildDisplayName(row)
         row['displayName'] = personDisplayName
@@ -1274,7 +1279,9 @@ def people():
 @app.route("/person/<username>")
 def person(username):
     userDict = buildUserDict()
-    personRows = db.execute("SELECT * FROM users WHERE username = ?", username)
+    dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    dict_cur.execute("""SELECT * FROM users WHERE username = %s""", [username])
+    personRows = [dict(row) for row in dict_cur.fetchall()]
     personID = personRows[0]['id']
     lovedOnes = selectLovedOnes(personID)
     personDisplayName = buildDisplayName(personRows[0])
@@ -1331,7 +1338,9 @@ def profile2():
             dict_cur.execute("""BEGIN""")
             try:
                 dict_cur.execute("""UPDATE users SET profile_image = (%s) WHERE id = (%s)""", [str(session.get("id")) + file_ext, session.get("id")])
-            except:
+            except Exception as error:
+                print ("Oops! An exception has occurred:", error)
+                print ("Exception TYPE:", type(error))
                 dict_cur.execute("""ROLLBACK""")
                 abort(500)
             dict_cur.execute("""COMMIT""")
@@ -1350,7 +1359,9 @@ def profile2():
             dict_cur.execute("""BEGIN""")
             try:
                 dict_cur.execute("""UPDATE users SET username = (%s) WHERE id = (%s)""", [request.args.get("username"), session.get("id")])
-            except:
+            except Exception as error:
+                print ("Oops! An exception has occurred:", error)
+                print ("Exception TYPE:", type(error))
                 dict_cur.execute("""ROLLBACK""")
                 abort(500)
             dict_cur.execute("""COMMIT""")
@@ -1359,7 +1370,9 @@ def profile2():
             dict_cur.execute("""BEGIN""")
             try:
                 dict_cur.execute("""UPDATE users SET first_name = (%s) WHERE id = (%s)""", [request.args.get("first_name"), session.get("id")])
-            except:
+            except Exception as error:
+                print ("Oops! An exception has occurred:", error)
+                print ("Exception TYPE:", type(error))
                 dict_cur.execute("""ROLLBACK""")
                 abort(500)
             dict_cur.execute("""COMMIT""")
@@ -1368,7 +1381,9 @@ def profile2():
             dict_cur.execute("""BEGIN""")
             try:
                 dict_cur.execute("""UPDATE users SET last_name = (%s) WHERE id = (%s)""", [request.args.get("last_name"), session.get("id")])
-            except:
+            except Exception as error:
+                print ("Oops! An exception has occurred:", error)
+                print ("Exception TYPE:", type(error))
                 dict_cur.execute("""ROLLBACK""")
                 abort(500)
             dict_cur.execute("""COMMIT""")
@@ -1378,7 +1393,9 @@ def profile2():
             dict_cur.execute("""BEGIN""")
             try:
                 dict_cur.execute("""UPDATE users SET display_name_option = (%s) WHERE id = (%s)""", [displayNameOptionRequest, session.get("id")])
-            except:
+            except Exception as error:
+                print ("Oops! An exception has occurred:", error)
+                print ("Exception TYPE:", type(error))
                 dict_cur.execute("""ROLLBACK""")
                 abort(500)
             dict_cur.execute("""COMMIT""")
@@ -1674,7 +1691,9 @@ def register():
         dict_cur.execute("""BEGIN""")
         try:
             dict_cur.execute("""INSERT INTO users (username, email, pw_hash) VALUES((%s),(%s),(%s))""", [request.form.get("username"), request.form.get("email"), pw_hash])
-        except:
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
             dict_cur.execute("""ROLLBACK""")
             abort(500)
         dict_cur.execute("""COMMIT""")
@@ -1736,32 +1755,32 @@ def signout():
     # Redirect user to home page
     return redirect("/")
 
-@app.route("/topics", methods = ["GET", "POST"])
-@email_required
-def topics():
-    if request.method == "POST":
-        db.execute("INSERT INTO topics (topic) VALUES (?)", request.form.get("newTopic"))
-        return redirect("/topics")
-    # query db topics table to get list of topics
-    topics = db.execute("SELECT * FROM topics ORDER BY topic ASC")
-    userDict = buildUserDict()
-    return render_template ("topics.html", topics = topics, userDict = userDict)
+# @app.route("/topics", methods = ["GET", "POST"])
+# @email_required
+# def topics():
+#     if request.method == "POST":
+#         db.execute("INSERT INTO topics (topic) VALUES (?)", request.form.get("newTopic"))
+#         return redirect("/topics")
+#     # query db topics table to get list of topics
+#     topics = db.execute("SELECT * FROM topics ORDER BY topic ASC")
+#     userDict = buildUserDict()
+#     return render_template ("topics.html", topics = topics, userDict = userDict)
 
-@app.route("/testForErrors", methods = ["GET", "POST"])
-def testForErrors():
-    if request.method == "POST":
-        userID = int(request.form.get("userID"))
-        topicID = int(request.form.get("topicID"))
-        db.execute("BEGIN TRANSACTION")
-        try:
-            db.execute("INSERT INTO UserToTopic (userID,topicID) VALUES (?,?)", userID, topicID)
-        except:
-            db.execute("ROLLBACK")
-            abort(500)
-        db.execute("COMMIT")
-        return "Your update was successful"
-    else:
-        return render_template ("testForErrors.html")
+# @app.route("/testForErrors", methods = ["GET", "POST"])
+# def testForErrors():
+#     if request.method == "POST":
+#         userID = int(request.form.get("userID"))
+#         topicID = int(request.form.get("topicID"))
+#         db.execute("BEGIN TRANSACTION")
+#         try:
+#             db.execute("INSERT INTO UserToTopic (userID,topicID) VALUES (?,?)", userID, topicID)
+#         except:
+#             db.execute("ROLLBACK")
+#             abort(500)
+#         db.execute("COMMIT")
+#         return "Your update was successful"
+#     else:
+#         return render_template ("testForErrors.html")
 
 
 # ===== END ROUTES ========

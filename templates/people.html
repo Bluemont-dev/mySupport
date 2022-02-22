@@ -20,7 +20,7 @@
             </div>
             <div class="mb-4">
               <label for="name" class="form-label">Enter any part of their name:</label>
-              <input type="text" class="form-control" id="name" name="name" {% if 'name' in queryDict %} value={{ queryDict['name'] }}{% endif %}>
+              <input type="text" class="form-control" id="name" name="name" {% if 'name' in queryDict %} value="{{ queryDict['name'] }}"{% endif %}>
             </div>
             <!--begin the accordion for filtering by geography-->
             <div class="accordion mb-4" id="geoAccordion">
@@ -124,21 +124,21 @@
                 <div class="row mb-3 p-2 {{ loop.cycle('odd', 'even') }}">
                     <div  class="thumbnailDiv col-md-auto mx-auto d-flex justify-content-left">
                         <figure class = "thumbnailFigure">
-                            <img class = "thumbnailImage" alt={{ row['displayName'] }} src={{ "/static/avatars/" + row['profileImage'] }}>
+                            <img class = "thumbnailImage" alt="{{ row['displayName'] }}" src="{{ '/static/avatars/' + row['profile_image'] }}">
                             <!--<figcaption class = "thumbnailFigcaption">{{ row["displayName"] }}</figcaption>-->
                         </figure>
                     </div>
                     <div class="col">
-                        <h5><a href={{ '/person/' + row['username'].replace(' ','%20') }}>{% if row['firstName'] %}
-                                {{row['firstName']}}
+                        <h5><a href="{{ '/person/' + row['username'].replace(' ','%20') }}">{% if row['first_name'] %}
+                                {{row['first_name']}}
                             {% endif %}
-                            {% if row['firstName'] and row['lastName'] %}
+                            {% if row['first_name'] and row['last_name'] %}
 
                             {% endif %}
-                            {% if row['lastName'] %}
-                                {{row['lastName']}}
+                            {% if row['last_name'] %}
+                                {{row['last_name']}}
                             {% endif %}
-                            {% if (row['firstName'] or row['lastName']) %}
+                            {% if (row['first_name'] or row['last_name']) %}
                                 /
                             {% endif %}
                              {{ row['username'] }}
