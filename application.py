@@ -1181,6 +1181,70 @@ def messagesThreadBlank():
         # return the user to the same thread, with the newly added message displayed (hopefully!)
         return redirect('/messages/thread/' + request.form.get('recipientsCSV'))
 
+@app.route("/passwordreset1", methods = ["GET","POST"])
+def passwordReset1():
+    if request.method == "GET":
+        # call a function that checks for authentication and sends correct object to the template
+        userDict = buildUserDict()
+        return render_template ("passwordReset1.html", userDict = userDict)
+    else:
+        # we have a post request
+        # first make sure the email submitted is in the db
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""SELECT username FROM users WHERE email = %s""",[request.form.get('email')])
+        emailMatched = dict_cur.fetchall()
+        if len(emailMatched) == 0:
+            flash("This email is not associated with any user. Try a different email address, or register a new account with the link below.", flashStyling("danger"))
+            return redirect('/passwordreset1')
+        else:
+            sendPasswordResetEmail(request.form.get('email'))
+            return redirect('/passwordreset2/' + request.form.get('email'))
+
+@app.route("/passwordreset2/<email>")
+def passwordReset2(email):
+    # call a function that checks for authentication and sends correct object to the template
+    userDict = buildUserDict()
+    return render_template ("passwordReset2.html", email=email, userDict = userDict)
+
+@app.route("/passwordreset3/<token>", methods = ["GET", "POST"])
+def passwordReset3(token):
+    try:
+        email = s.loads(token, salt='password-reset', max_age=7200)
+    except SignatureExpired:
+        userDict = buildUserDict()
+        return errorView(userDict, "Token has expired", "Your password reset token has expired.", "Try again", "passwordReset1")
+    if request.method == "GET":
+        userDict = buildUserDict()
+        return render_template ("passwordReset3.html", userDict = userDict)
+    if request.method == "POST":
+        # Ensure password was submitted, which is 99% certain via client side JS form validation
+        if not request.form.get("password1"):
+            flash("Please provide your new password.",flashStyling("danger"))
+            return redirect("/passwordreset3/" + token)
+        # hash the new password to create a text variable
+        pw_hash = generate_password_hash(request.form.get("password1"), method='pbkdf2:sha256', salt_length=8)
+        # update user record with new password
+        dict_cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        dict_cur.execute("""BEGIN""")
+        try:
+            dict_cur.execute("""UPDATE users SET pw_hash = %s WHERE email = %s""", [pw_hash,email])
+        except Exception as error:
+            print ("Oops! An exception has occurred:", error)
+            print ("Exception TYPE:", type(error))
+            dict_cur.execute("""ROLLBACK""")
+            abort(500)
+        dict_cur.execute("COMMIT")
+        # log the user in
+        if session.get("id") is None:
+            dict_cur.execute("""SELECT * FROM users WHERE email = %s""", [email])
+            rows = [dict(row) for row in dict_cur.fetchall()]
+            print(f"email is: {email}")
+            print(f"Rows: {rows}")
+            setSessionValues(rows)
+        # continue to home page
+        flash("Thanks, " + session["username"] + ", your password has been reset.", flashStyling("success"))
+        return redirect ("/")
+
 @app.route("/people")
 def people():
     # set the max number of people to display when the page loads
@@ -1890,8 +1954,16 @@ def sendVerificationEmail(emailAddress):
     token = s.dumps(emailAddress, salt='email-verify')
     # generate the email for validation
     link = url_for('emailVerify', token=token, _external=True)
-    msg = Message("MySupport verification email", sender=("MySupport", "info@bluemontcommunications.com"), recipients=[emailAddress])
+    msg = Message("MySupport email verification", sender=("MySupport", "info@bluemontcommunications.com"), recipients=[emailAddress])
     msg.body = "If you recently registered with MySupport, please click the link below to verify your email address. If you did not register with MySupport, please ignore this message and do not click the link. The link is:" + link
+    mail.send(msg)
+
+def sendPasswordResetEmail(emailAddress):
+    token = s.dumps(emailAddress, salt='password-reset')
+    # generate the email for pasword reset
+    link = url_for('passwordReset3', token=token, _external=True)
+    msg = Message("MySupport pasword reset", sender=("MySupport", "info@bluemontcommunications.com"), recipients=[emailAddress])
+    msg.body = "If you recently requested a password reset with MySupport, please click the link below to continue with your reset. If you did not request a password reset with MySupport, please ignore this message and do not click the link. The link is:" + link
     mail.send(msg)
 
 # when signing a user in

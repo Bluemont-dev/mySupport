@@ -18,7 +18,7 @@ messagesThreadForm.name.addEventListener('keyup', async function(e){
         preload.style.display = "block";
         preload.innerHTML = "";
         nameRows = await getAPIData('/messages/preload/' + messagesThreadForm.name.value);
-        console.log(nameRows)
+        // console.log(nameRows)
         let searchString = messagesThreadForm.name.value;
         let regex = new RegExp(searchString, "gi");
         let masterString = "";
