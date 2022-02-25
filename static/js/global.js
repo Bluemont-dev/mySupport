@@ -1,7 +1,7 @@
 function getAPIData(url) {
   return new Promise((resolve, reject) => {
     var request = new XMLHttpRequest();
-    var errorText = "Sorry, unable to get requested data from the server. Please notify Bluemont.";
+    var errorText = "Sorry, unable to get requested data from the server. For help, please use the Contact Us page.";
     request.open('GET', url, true);
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {

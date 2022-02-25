@@ -20,7 +20,7 @@
 
     <body>
       <div class="container">
-        <!-- ========== BEGIN NAVBAR ============ -->
+        <!-- ========== BEGIN HEADER NAVBAR ============ -->
         <nav class="navbar sticky-top navbar-dark navbar-expand-lg" style="background-color: #0c499c;">
             <div class="container-fluid">
               <span>
@@ -89,7 +89,7 @@
               </div>
             </div>
         </nav>
-        <!-- ========== END NAVBAR ============ -->
+        <!-- ========== END HEADER NAVBAR ============ -->
 
         <!-- ========== BEGIN FLASH MESSAGE DISPLAY ============ -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -115,9 +115,33 @@
            {% block main %}{% endblock %}
            </main>
 
-        <footer class="footer mt-auto py-3 bg-light">
-          <div class="container">
-            <span class="text-muted">Place sticky footer content here. And why is it not sticking?</span>
+        <!-- <footer class="footer fixed-bottom mt-auto py-3"> -->
+        <footer>
+          <div id = "footer" class="container fixed-bottom">
+            <!-- ========== BEGIN FOOTER NAVBAR ============ -->
+            <nav class="navbar navbar-dark navbar-expand-lg" style="background-color: #0c499c;">
+                <div class="container-fluid">
+                  <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                      <span class="nav-link fs-6 text-white align-middle mx-3"><em>&copy; 2022 Bluemont Communications LLC</em></span>
+                    </li>
+                    <li class="nav-item">
+                      <a class="nav-link active" aria-current="page" href="/contact">Contact Us</a>
+                    </li>
+                  </ul>
+                  <!-- <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent2" aria-controls="navbarSupportedContent2" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                  </button>
+                    <div class="collapse navbar-collapse" id="navbarSupportedContent2">
+                      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                          <a class="nav-link active" aria-current="page" href="/contact">Contact Us</a>
+                        </li>
+                      </ul>
+                  </div> -->
+                </div>
+            </nav>
+            <!-- ========== END FOOTER NAVBAR ============ -->
           </div>
         </footer>
       </div>

@@ -199,7 +199,7 @@ def article(articleID):
     # truncate the datePublished because the time of 00:00:00 was just a data placeholder
     articleRows[0]['publishedDateTimeString'] = articleRows[0]['publishedDateTimeString'][:articleRows[0]['publishedDateTimeString'].find('-')-1]
     articleRows[0]['website'] = urlparse(articleRows[0]['url']).netloc
-    print(f"articleRows[0] = {articleRows[0]}")
+    # print(f"articleRows[0] = {articleRows[0]}")
     commentRows = getArticleCommentRowsForDisplay(articleID)
     commentEditMode = "create"
     return render_template("articleView.html", userDict = userDict, articleRow = articleRows[0], commentRows = commentRows, commentEditMode = commentEditMode)
@@ -259,7 +259,7 @@ def articleCommentEdit(articleID, commentID):
         # truncate the datePublished because the time of 00:00:00 was just a data placeholder
         articleRows[0]['publishedDateTimeString'] = articleRows[0]['publishedDateTimeString'][:articleRows[0]['publishedDateTimeString'].find('-')-1]
         articleRows[0]['website'] = urlparse(articleRows[0]['url']).netloc
-        print(f"articleRows[0] = {articleRows[0]}")
+        # print(f"articleRows[0] = {articleRows[0]}")
         commentRows = getArticleCommentRowsForDisplay(articleID)
         commentEditMode = "edit"
         commentEditID = commentID
@@ -368,8 +368,8 @@ def articleEdit(articleID):
         dict_cur.execute("""SELECT url FROM articles WHERE id = %s""", [int(articleID)])
         existingURLList = dict_cur.fetchall()
         existingURL = existingURLList[0]['url']
-        print(f"Existing URL is: {existingURL}")
-        print(f"submitted url is: {url}")
+        # print(f"Existing URL is: {existingURL}")
+        # print(f"submitted url is: {url}")
         if url != existingURL:
             flash("You cannot change the URL of an existing article, but you can create a new article with the new URL.", flashStyling("warning"))
             return redirect("/article/edit/" + articleID)
@@ -381,7 +381,7 @@ def articleEdit(articleID):
         passedDict['url'] = url
         passedDict['date_published'] = datePublished
         passedDict['og_image'] = ogImage
-        print(f"Passed dictionary is {passedDict}")
+        # print(f"Passed dictionary is {passedDict}")
         keysList = list(passedDict.keys())
         keysString = ",".join(keysList)
         valuesList = list(passedDict.values())
@@ -456,7 +456,7 @@ def getArticleDetails():
     try:
         request_page = urlopen(url)
     except:
-        print(f"despite error, articleRow[0] = {articleRow[0]}")
+        # print(f"despite error, articleRow[0] = {articleRow[0]}")
         return render_template("articleThread.html", userDict = userDict, userRows = userRows, selectsDict = selectsDict, articleRow = articleRow[0], editMode = editMode)
     page_html = request_page.read()
     request_page.close()
@@ -517,7 +517,7 @@ def articleThreadBlank():
     else:
         # method was POST
         myDict = dict(request.form)
-        print(f"myDict: {myDict}")
+        # print(f"myDict: {myDict}")
         # note that request.form returns an "ImmutableMultidict", so the dict() method turns it into a regular dict
         # to write a new article, take the following steps
         # get the selections from each of the selects and condense them into lists/arrays
@@ -535,9 +535,9 @@ def articleThreadBlank():
         else:
             passedDict['og_image'] = None
         passedDict['sender_id'] = session.get('id')
-        print(f"Passed dictionary is {passedDict}")
+        # print(f"Passed dictionary is {passedDict}")
         insert_flds = [fld_name for fld_name in passedDict.keys()]
-        print(f"Insert fields: {insert_flds}")
+        # print(f"Insert fields: {insert_flds}")
         insert_str = sql.SQL("INSERT INTO articles ({}) VALUES ({}) RETURNING id").format(
         sql.SQL(",").join(map(sql.Identifier, insert_flds)),
         sql.SQL(",").join(map(sql.Placeholder, insert_flds)))
@@ -646,6 +646,25 @@ def discussion(discussionID):
     commentRows = getDiscussionCommentRowsForDisplay(discussionID)
     commentEditMode = "create"
     return render_template("discussionView.html", userDict = userDict, discussionRow = discussionRows[0], commentRows = commentRows, commentEditMode = commentEditMode)
+
+@app.route("/contact", methods = ["GET","POST"])
+def contact():
+    if request.method == "GET":
+        userDict = buildUserDict()
+        return render_template("contact.html", userDict = userDict)
+    else:
+        # we have a post request
+        mailDict = dict(request.form)
+        # print(mailDict)
+        msg = Message("MySupport contact form submission", sender=("MySupport", "info@bluemontcommunications.com"), recipients=["info@bluemontcommunications.com"])
+        msg.body = "Name: " + mailDict['name'] + "\nEmail: " + mailDict['email'] + "\nMessage: " + mailDict['message']
+        mail.send(msg)
+        return redirect ("/contact2")
+
+@app.route("/contact2", methods = ["GET"])
+def contact2():
+    userDict = buildUserDict()
+    return render_template("contact2.html", userDict = userDict)
 
 @app.route("/discussion/comment/<discussionID>", methods = ["POST"])
 @login_required
@@ -1238,8 +1257,8 @@ def passwordReset3(token):
         if session.get("id") is None:
             dict_cur.execute("""SELECT * FROM users WHERE email = %s""", [email])
             rows = [dict(row) for row in dict_cur.fetchall()]
-            print(f"email is: {email}")
-            print(f"Rows: {rows}")
+            # print(f"email is: {email}")
+            # print(f"Rows: {rows}")
             setSessionValues(rows)
         # continue to home page
         flash("Thanks, " + session["username"] + ", your password has been reset.", flashStyling("success"))

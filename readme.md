@@ -1,7 +1,6 @@
 # MySupport
-#### Video Demo:  https://youtu.be/Q8D6WSIvC8U
 #### Description:
-MySupport is an online community powered by a web-based application. The application is written in Python, uses Flask as the web server, and integrates with a SQLite database.
+MySupport is an online community powered by a web-based application. The application is written in Python, uses Flask as the web server, and integrates with a Postgtresql database.
 
 The main purposes of MySupport are to help connect people who share a common struggle, such as mental illness, substance abuse, developmental disabilities, domestic abuse, etc. It is intended to supplement an in-person support group, but it also could be used by those who do not or cannot attend in person.
 
@@ -35,7 +34,7 @@ Bootstrap 5 is the design framework for MySupport.
 
 The primary application code is in application.py; some functions are stored in helpers.py.
 
-The SQLite database file is mySupport.db, and it includes a large number of tables due to the many content types and the tags that can be assigned to them. For example, the users table contains basic information about each user, while the messages, articles and discussions table contain the content that is published by those users. But the app uses many JOIN tables because of the many-to-many relationships involving comments, a user's loved ones, and the demographic data shared anonymously about those loved ones, such as relationship, age, gender, and the challenges they live with.
+The database includes a large number of tables due to the many content types and the tags that can be assigned to them. For example, the users table contains basic information about each user, while the messages, articles and discussions table contain the content that is published by those users. But the app uses many JOIN tables because of the many-to-many relationships involving comments, a user's loved ones, and the demographic data shared anonymously about those loved ones, such as relationship, age, gender, and the challenges they live with.
 
 Some key site features and the Python libraries that power them are:
 

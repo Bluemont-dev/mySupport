@@ -203,27 +203,3 @@ function disableSubmitButton(disable){
         profile4SubmitButton.removeAttribute('disabled');
     }
 }
-
-// function getAPIData(url) {
-//   return new Promise((resolve, reject) => {
-//     var request = new XMLHttpRequest();
-//     var errorText = "Sorry, unable to get requested data from the server. Please notify Bluemont.";
-//     request.open('GET', url, true);
-//     request.onload = function () {
-//       if (this.status >= 200 && this.status < 400) {
-//         // Success!
-//         var returnedAPIData = JSON.parse(this.response);
-//         // return data;
-//         resolve(returnedAPIData);
-//       } else {
-//         // We reached our target server, but it returned an error
-//         reject(errorText);
-//       }
-//     };
-//     request.onerror = function () {
-//       // There was a connection error of some sort
-//       reject(errorText);
-//     };
-//     request.send();
-//   });
-// }

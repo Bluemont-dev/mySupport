@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    {{ super () }}
+     <link href="/static/css/register.css" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+    Contact Us
+{% endblock %}
+
+{% block main %}
+<div class="align-items-center" height=100%>
+    <main>
+        <div class="px-4 pt-4 pb-5 my-4 row">
+            <div class="col-lg-6">
+                <img class="img-fluid" src="/static/images/contact us.jpg" alt="Scrabble tiles spell out 'Contact Us'">
+                <p><em>Photo by <a href="https://unsplash.com/@milesb?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Miles Burke</a> on <a href="https://unsplash.com/s/photos/contact?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a></em></p>
+            </div>
+            <div class="col-lg-6">
+                <form action="/contact" method="post">
+                    <h1 class="h3 mb-4 fw-normal">Contact Us</h1>
+                    <label for="emailInput">Email address</label>
+                    <p class="text-muted">Example: yourname@company.com</p>
+                    <div class="input-group mb-3">
+                      <input type="email" class="form-control" id="emailInput" name="email" required>
+                    </div>
+                    <label for="nameInput">Your name: <em>(optional)</em></label>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="nameInput" name="name">
+                    </div>
+                    <label for="message">How can we help?</label>
+                    <div class="input-group mb-3">
+                        <textarea class="form-control" id="message" name="message" rows="5" cols="40" required></textarea>
+                    </div>
+                    <button class="w-100 btn btn-lg btn-primary mb-3" type="submit">Send</button>
+                  </form>                
+            </div>
+        </div>
+        <div class="px-4 pt-4 pb-5 my-4 row d-flex justify-content-center">
+            <div class="col-lg-6">
+                <p>MySupport is a prototype for an online community, designed and developed by <a href="https:/bluemontcommunications.com" target="_blank">Bluemont Communications LLC</a> in Arlington, VA.</p>
+                <p>Want to explore how your organization could adapt MySupport to help your community? Let's talk! </p>
+            </div>
+        </div>
+    </main>
+</div>
+
+{% endblock %}
+
+{% block localJS %}
+  <script src="/static/js/signin.js"></script>
+{% endblock %}
