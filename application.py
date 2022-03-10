@@ -2664,3 +2664,6 @@ def checkDateFormat (string):
     return dateFormat
 
 # ========= END OTHER HANDY FUNCTIONS ============
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0')
