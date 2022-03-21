@@ -60,3 +60,5 @@ Features I would like to add include:
 ## Difficulties
 Due to limited experience with Python, I was unable to figure out how to break my main file (application.py) into smaller modules. As a result, this file has over 2,000 lines of code, and is a bit unwieldy to edit. I will definitely learn how to refactor the code if I move forward with this as a production-ready offering.
 
+Looking forward to getting this in the hands of people who need it!
+
