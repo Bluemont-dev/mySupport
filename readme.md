@@ -1,6 +1,6 @@
 # MySupport
 #### Description:
-MySupport is an online community powered by a web-based application. The application is written in Python, uses Flask as the web server, and integrates with a Postgtresql database.
+MySupport is an online community powered by a web-based application. The application is written in Python, uses Flask as the web server, and integrates with a PostgreSQL database.
 
 The main purposes of MySupport are to help connect people who share a common struggle, such as mental illness, substance abuse, developmental disabilities, domestic abuse, etc. It is intended to supplement an in-person support group, but it also could be used by those who do not or cannot attend in person.
 
