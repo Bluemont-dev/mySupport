@@ -88,6 +88,7 @@ db['host'] = os.getenv('DATABASE_HOST')
 db['database'] = os.getenv('DATABASE')
 db['user'] = os.getenv('DATABASE_USER')
 db['password'] = os.getenv('DATABASE_PASSWORD')
+db['port'] = os.getenv('DATABASE_PORT')
 
 # connect to the db
 print('Connecting to the PostgreSQL database...')
@@ -95,6 +96,7 @@ conn = psycopg2.connect(
     host=db['host'],
     database=db['database'],
     user=db['user'],
+    port=db['port'],
     password=db['password'])
 
 # set default so that every query is committed unless a transaction block is explicitly used
