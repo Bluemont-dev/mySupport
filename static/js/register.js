@@ -2,6 +2,13 @@ const form  = document.getElementsByTagName('form')[0];
 
 let clientSideFeedback = document.getElementById('clientSideFeedback');
 
+window.addEventListener('load', (event) => {
+  if (navigator.cookieEnabled == false){
+    // cookies are disabled; warn user of lost functionality
+    alert("Please enable cookies in your browser. Your registration and log in won't work without this.");
+  }
+});
+
 form.addEventListener('submit', function (event) {
   // if the fields are valid, we let the form submit
   //zero out the variables and DOM items
